@@ -1134,7 +1134,7 @@ if __name__ == '__main__':
     else:
         print(f'  [INFO]  No database selected yet — use the DB selector in the dashboard.')
 
-    # ── IDLE WATCHDOG: auto-shutdown after 30 min of no browser activity ───────
+    # ── IDLE WATCHDOG: auto-shutdown after 120 min of no browser activity ──────
     _last_active = [time.time()]
 
     @app.before_request
@@ -1142,7 +1142,7 @@ if __name__ == '__main__':
         _last_active[0] = time.time()
 
     def _watchdog():
-        IDLE_MINUTES = 30
+        IDLE_MINUTES = 120
         while True:
             time.sleep(60)
             idle = (time.time() - _last_active[0]) / 60

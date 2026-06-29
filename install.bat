@@ -166,7 +166,7 @@ echo.
 echo   Double-click it to launch the dashboard.
 echo   The setup wizard will guide you on first launch.
 echo.
-echo   NOTE: The dashboard auto-stops after 30 minutes
+echo   NOTE: The dashboard auto-stops after 2 hours
 echo   of inactivity. Simply re-open the shortcut to
 echo   start it again.
 echo  ====================================================
