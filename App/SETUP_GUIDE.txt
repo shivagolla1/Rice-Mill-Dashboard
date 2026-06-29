@@ -1,0 +1,102 @@
+╔══════════════════════════════════════════════════════════════╗
+║         SGRI RICE MILL DASHBOARD — Setup Guide               ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FIRST TIME SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Install Python
+   → https://www.python.org/downloads/
+   → TICK "Add Python to PATH" during install
+
+2. Run setup.bat (double-click)
+   → Installs flask, openpyxl, access_parser
+
+3. Make sure your .mdb file is at:
+      data\SGRI_2025-2026.mdb
+
+4. Double-click start.bat
+   → Browser opens automatically at http://localhost:5000
+   → Phone address shown in the black window
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHAT EACH PAGE SHOWS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Orders  → All Sales from IO table (linked to IO Details + Confirmation)
+          Click any row → Payment history from Journal
+          Shows Days to Pay per payment
+
+Stocks  → Current stock levels from Godowns table
+          Click "Sync to Cloud" to push to your private Google Sheet
+
+Stats   → Charts: Top parties by volume, rice variety distribution
+
+Data    → Browse all tables in the .mdb file
+          Click any table → see all rows, filter by keyword
+
+Explore → IO Explorer: filter bills, click to see
+          IO + IO Details + IO Other Details + IO DC + Payments merged
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FOLDER STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  sgri-dashboard/
+    app.py               ← main server
+    config.txt           ← your settings
+    setup.bat            ← run once
+    start.bat            ← run daily
+    requirements.txt
+    SETUP_GUIDE.txt      ← this file
+    data/
+      SGRI_2025-2026.mdb ← your database
+    templates/
+      index.html         ← dashboard UI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  REMOTE STOCK SYNC (optional)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+To view stock levels from your phone while away from mill:
+
+1. Create a new private Google Sheet
+2. Click Extensions → Apps Script → paste this code:
+
+   function doPost(e) {
+     var data = JSON.parse(e.postData.contents);
+     var sh = SpreadsheetApp.getActiveSpreadsheet()
+               .getSheetByName('Stocks') ||
+               SpreadsheetApp.getActiveSpreadsheet().insertSheet('Stocks');
+     sh.clearContents();
+     sh.getRange(1,1,1,4).setValues([['Variety','Bags','Quintals','Tonnes']]);
+     data.items.forEach(function(item, i) {
+       sh.getRange(i+2,1,1,4).setValues([[item.name,item.bags,item.qtls,item.tonnes]]);
+     });
+     return ContentService.createTextOutput('OK');
+   }
+
+3. Deploy → New deployment → Web app
+   Execute as: Me | Who has access: Anyone
+4. Copy the Web App URL
+5. Paste it in config.txt as STOCKS_WEBHOOK_URL
+6. Restart start.bat
+7. Click "☁ Sync to Cloud" on the Stocks page
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Orders page is empty / shows error
+  → Check that data\SGRI_2025-2026.mdb exists
+  → Run setup.bat again if access_parser is missing
+
+"python is not recognized"
+  → Re-install Python, tick "Add Python to PATH"
+
+Phone can't connect
+  → Use the http://192.168.x.x:5000 address from the black window
+  → Phone and PC must be on same WiFi
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,0 +1,3581 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ industry_name }} — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      src: url('/static/fonts/inter-regular.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Inter';
+      src: url('/static/fonts/inter-medium.woff2') format('woff2');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Inter';
+      src: url('/static/fonts/inter-semibold.woff2') format('woff2');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Inter';
+      src: url('/static/fonts/inter-bold.woff2') format('woff2');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #faf7f2;
+      --sur: #f2ede4;
+      --sur2: #e8e2d8;
+      --bdr: #ddd8ce;
+      --bdr2: #cec8bc;
+      --tx: #1c1a16;
+      --tx2: #5a5248;
+      --tx3: #8a8078;
+      --accent: #c96442;
+      --accent-lt: #a84e32;
+      --green: #2d7a4a;
+      --gbg: rgba(45, 122, 74, .08);
+      --yellow: #8a6e1a;
+      --ybg: rgba(138, 110, 26, .08);
+      --red: #a83820;
+      --rbg: rgba(168, 56, 32, .08);
+      --blue: #3a6ea8;
+      --bbg: rgba(58, 110, 168, .08);
+      --sw: 224px;
+      --r: 10px;
+      --font: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    html,
+    body {
+      height: 100%
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--tx);
+      display: flex;
+      font-size: 14px;
+      line-height: 1.6;
+      letter-spacing: .01em
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg)
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--bdr2);
+      border-radius: 3px
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--tx3)
+    }
+
+    /* SIDEBAR — collapses to icon strip, expands on hover */
+    :root {
+      --sb-collapsed: 60px;
+      --sw: 220px;
+      --logo-sz: 2.625rem;
+      --logo-sz-hover: 4.125rem;
+      --logo-sz-hdr: 2.375rem;
+    }
+
+    .sb {
+      width: var(--sb-collapsed);
+      min-height: 100vh;
+      background: var(--sur);
+      border-right: 1px solid var(--bdr);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 100;
+      overflow: hidden;
+      transition: width .25s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .sb:hover {
+      width: var(--sw)
+    }
+
+    .sb-logo {
+      padding: 16px 0 12px;
+      border-bottom: 1px solid var(--bdr);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: var(--sb-collapsed);
+      overflow: hidden;
+      transition: all .25s ease;
+      box-sizing: border-box
+    }
+
+    .sb:hover .sb-logo {
+      width: var(--sw);
+      padding: 16px 10px 12px;
+      align-items: center
+    }
+
+    .logo-img {
+      width: var(--logo-sz);
+      height: var(--logo-sz);
+      border-radius: 50%;
+      object-fit: contain;
+      mix-blend-mode: multiply;
+      transition: all .25s ease
+    }
+
+    .sb:hover .logo-img {
+      width: var(--logo-sz-hover);
+      height: var(--logo-sz-hover)
+    }
+
+    .logo-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.4;
+      opacity: 0;
+      transition: opacity .2s .05s;
+      padding: 0 4px
+    }
+
+    .sb:hover .logo-title {
+      opacity: 1
+    }
+
+    .sb-nav {
+      padding: 12px 6px;
+      flex: 1;
+      min-width: var(--sw);
+      overflow-y: auto;
+      overflow-x: hidden
+    }
+
+    .sb-nav::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .sb-nav::-webkit-scrollbar-thumb {
+      background: var(--bdr2);
+      border-radius: 2px
+    }
+
+    .nav-lbl {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--tx3);
+      padding: 0 10px;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity .15s
+    }
+
+    .sb:hover .nav-lbl {
+      opacity: 1
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--tx2);
+      font-size: 13px;
+      transition: all .15s;
+      margin-bottom: 2px;
+      user-select: none;
+      white-space: nowrap
+    }
+
+    .nav-item:hover {
+      background: var(--sur2);
+      color: var(--tx)
+    }
+
+    .nav-item.active {
+      background: rgba(201, 100, 66, .15);
+      color: var(--accent-lt);
+      font-weight: 500
+    }
+
+    .nav-icon {
+      font-size: 16px;
+      width: 22px;
+      text-align: center;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .nav-icon svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+      transition: transform 0.15s ease
+    }
+
+    .nav-item:hover .nav-icon svg {
+      transform: scale(1.15)
+    }
+
+    .nav-txt {
+      opacity: 0;
+      transition: opacity .15s .05s
+    }
+
+    .sb:hover .nav-txt {
+      opacity: 1
+    }
+
+    .sb-footer {
+      padding: 8px 0;
+      border-top: 1px solid var(--bdr);
+      font-size: 11px;
+      color: var(--tx3);
+      font-family: var(--mono);
+      text-align: center;
+      white-space: nowrap;
+      min-width: var(--sw);
+      overflow: hidden
+    }
+
+    .sb:hover .sb-footer {
+      text-align: left;
+      padding: 8px 20px
+    }
+
+    .sb-foot-txt {
+      opacity: 0;
+      transition: opacity .15s
+    }
+
+    .sb:hover .sb-foot-txt {
+      opacity: 1
+    }
+
+    /* MAIN */
+    .main {
+      margin-left: var(--sb-collapsed);
+      flex: 1;
+      min-height: 100vh;
+      min-width: 0;
+      overflow-x: hidden;
+      transition: margin-left .25s cubic-bezier(.4, 0, .2, 1)
+    }
+
+    .ph {
+      padding: 10px 16px 10px;
+      border-bottom: 1px solid var(--bdr);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap
+    }
+
+    .pt {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -.4px
+    }
+
+    .ps {
+      font-size: 11px;
+      color: var(--tx3);
+      margin-top: 2px
+    }
+
+    .pc {
+      padding: 12px 16px
+    }
+
+    .page {
+      display: none
+    }
+
+    .page.active {
+      display: block
+    }
+
+    /* STICKY ORDERS HEADER — only the title bar, not the filters */
+    .ph-sticky {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(250, 247, 242, .92);
+      border-bottom: 1px solid var(--bdr);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px)
+    }
+
+    /* CARDS */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px
+    }
+
+    .card {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      padding: 16px
+    }
+
+    .card-lbl {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--tx3);
+      margin-bottom: 8px
+    }
+
+    .card-val {
+      font-size: 22px;
+      font-weight: 600;
+      font-family: var(--mono);
+      letter-spacing: -.5px;
+      line-height: 1
+    }
+
+    .card-sub {
+      font-size: 11px;
+      color: var(--tx3);
+      margin-top: 5px
+    }
+
+    .card.gn .card-val {
+      color: var(--green)
+    }
+
+    .card.gd .card-val {
+      color: var(--accent-lt)
+    }
+
+    .card.rd .card-val {
+      color: var(--red)
+    }
+
+    .card.bl .card-val {
+      color: var(--blue)
+    }
+
+    .card.yl .card-val {
+      color: var(--yellow)
+    }
+
+    /* FILTERS */
+    .fbar {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      padding: 8px 12px;
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 8px;
+      align-items: flex-end;
+      margin-bottom: 10px;
+      -webkit-overflow-scrolling: touch
+    }
+
+    .fbar::-webkit-scrollbar {
+      height: 3px
+    }
+
+    .fg {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      position: relative
+    }
+
+    .fl {
+      font-size: 11px;
+      color: var(--tx3);
+      white-space: nowrap
+    }
+
+    input[type=date],
+    input[type=text] {
+      background: var(--sur2);
+      border: 1px solid var(--bdr2);
+      border-radius: 6px;
+      color: var(--tx);
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 5px 8px;
+      outline: none;
+      color-scheme: light
+    }
+
+    input[type=date]:focus,
+    input[type=text]:focus {
+      border-color: var(--accent)
+    }
+
+    .ms-wrap {
+      position: relative
+    }
+
+    .ms-trig {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--sur2);
+      border: 1px solid var(--bdr2);
+      border-radius: 6px;
+      padding: 5px 9px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--tx);
+      user-select: none;
+      min-width: 110px
+    }
+
+    .ms-trig.open {
+      border-color: var(--accent)
+    }
+
+    .ms-arr {
+      margin-left: auto;
+      color: var(--tx3);
+      font-size: 10px;
+      transition: transform .15s
+    }
+
+    .ms-trig.open .ms-arr {
+      transform: rotate(180deg)
+    }
+
+    .ms-pills {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap
+    }
+
+    .ms-pill {
+      background: rgba(201, 100, 66, .18);
+      color: var(--accent-lt);
+      border-radius: 4px;
+      font-size: 11px;
+      padding: 1px 6px
+    }
+
+    .ms-ph {
+      color: var(--tx3)
+    }
+
+    .ms-panel {
+      display: none;
+      position: fixed;
+      background: var(--sur);
+      border: 1px solid var(--bdr2);
+      border-radius: 8px;
+      padding: 6px 0;
+      z-index: 9999;
+      min-width: 160px;
+      max-height: 220px;
+      overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .12)
+    }
+
+    .ms-panel.open {
+      display: block
+    }
+
+    .ms-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--tx2);
+      transition: background .1s
+    }
+
+    .ms-opt:hover {
+      background: var(--sur2);
+      color: var(--tx)
+    }
+
+    .ms-opt input[type=checkbox] {
+      accent-color: var(--accent);
+      width: 13px;
+      height: 13px
+    }
+
+    .btn-rst {
+      background: transparent;
+      border: 1px solid var(--bdr2);
+      border-radius: 6px;
+      color: var(--tx2);
+      font-size: 12px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all .15s
+    }
+
+    .btn-rst:hover {
+      border-color: var(--accent);
+      color: var(--accent-lt)
+    }
+
+    .fcnt {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--tx3);
+      font-family: var(--mono);
+      margin-bottom: 7px
+    }
+
+    /* TABLE */
+    .tw {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      overflow: auto;
+      max-height: calc(100vh - var(--top-h, 120px) - 16px)
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse
+    }
+
+    thead tr {
+      background: var(--sur2)
+    }
+
+    thead th {
+      padding: 6px 6px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--tx3);
+      border-bottom: 1px solid var(--bdr);
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--sur2)
+    }
+
+    th.sort {
+      cursor: pointer;
+      user-select: none
+    }
+
+    th.sort:hover {
+      color: var(--tx)
+    }
+
+    th.asc::after {
+      content: ' ↑';
+      color: var(--accent-lt)
+    }
+
+    th.desc::after {
+      content: ' ↓';
+      color: var(--accent-lt)
+    }
+
+    .td {
+      padding: 5px 6px;
+      border-bottom: 1px solid var(--bdr);
+      vertical-align: middle;
+      font-size: 12.5px
+    }
+
+    tr.dr:last-child .td {
+      border-bottom: none
+    }
+
+    .col-party {
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .col-broker {
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .col-variety {
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    tr.dr:hover>.td {
+      background: rgba(0, 0, 0, .025);
+      cursor: pointer
+    }
+
+    .num {
+      font-family: var(--mono);
+      font-size: 13px;
+      text-align: right
+    }
+
+    /* BADGE */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%
+    }
+
+    .paid {
+      background: var(--gbg);
+      color: var(--green)
+    }
+
+    .paid::before {
+      background: var(--green)
+    }
+
+    .partial {
+      background: var(--ybg);
+      color: var(--yellow)
+    }
+
+    .partial::before {
+      background: var(--yellow)
+    }
+
+    .unpaid {
+      background: var(--rbg);
+      color: var(--red)
+    }
+
+    .unpaid::before {
+      background: var(--red)
+    }
+
+    /* EXPAND */
+    .exp-row {
+      display: none
+    }
+
+    .exp-row.open {
+      display: table-row
+    }
+
+    .exp-cell {
+      background: rgba(232, 226, 216, .6);
+      border-bottom: 1px solid var(--bdr);
+      padding: 0
+    }
+
+    .exp-inner {
+      padding: 16px 24px 20px
+    }
+
+    .exp-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--tx3);
+      margin-bottom: 12px
+    }
+
+    .pay-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 620px
+    }
+
+    .pay-row {
+      display: grid;
+      grid-template-columns: 28px 90px 1fr 1fr 120px 80px;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 14px;
+      background: var(--sur2);
+      border: 1px solid var(--bdr);
+      border-radius: 8px
+    }
+
+    .pay-num {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--tx3);
+      background: var(--bdr2);
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%
+    }
+
+    .pay-date {
+      font-size: 12px;
+      color: var(--tx2);
+      font-family: var(--mono)
+    }
+
+    .pay-party {
+      font-size: 12px;
+      color: var(--tx);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .pay-amt {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green);
+      font-family: var(--mono);
+      text-align: right
+    }
+
+    .pay-cr {
+      font-size: 11px;
+      color: var(--tx3);
+      font-family: var(--mono);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .pay-days {
+      font-size: 11px;
+      color: var(--tx3);
+      text-align: right;
+      font-family: var(--mono)
+    }
+
+    .pay-days.fast {
+      color: var(--green)
+    }
+
+    .pay-days.slow {
+      color: var(--yellow)
+    }
+
+    .pay-days.late {
+      color: var(--red)
+    }
+
+    .pay-summary {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: rgba(45, 122, 74, .06);
+      border: 1px solid rgba(45, 122, 74, .18);
+      border-radius: 8px;
+      max-width: 760px;
+      flex-wrap: wrap
+    }
+
+    .ps-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px
+    }
+
+    .ps-lbl {
+      font-size: 10px;
+      color: var(--tx3);
+      text-transform: uppercase;
+      letter-spacing: .05em
+    }
+
+    .ps-val {
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--mono);
+      color: var(--tx)
+    }
+
+    .no-pay {
+      font-size: 13px;
+      color: var(--tx3);
+      padding: 8px 0
+    }
+
+    .chev {
+      display: inline-block;
+      transition: transform .2s;
+      font-size: 11px;
+      color: var(--tx3)
+    }
+
+    .chev.open {
+      transform: rotate(90deg)
+    }
+
+    /* DETAIL SUB-ROWS */
+    .det-row td {
+      background: rgba(232, 226, 216, .45);
+      border-bottom: 1px solid var(--bdr)
+    }
+
+    .det-row:hover td {
+      background: rgba(232, 226, 216, .7) !important;
+      cursor: default !important
+    }
+
+    .det-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--bdr2);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--tx3);
+      font-family: var(--mono)
+    }
+
+    .det-total td {
+      background: rgba(201, 100, 66, .07);
+      border-top: 2px solid rgba(201, 100, 66, .25);
+      border-bottom: 1px solid var(--bdr);
+      font-weight: 600
+    }
+
+    .det-total:hover td {
+      background: rgba(201, 100, 66, .12) !important;
+      cursor: default !important
+    }
+
+    /* SEGMENTED CONTROL */
+    .seg {
+      display: inline-flex;
+      background: var(--sur2);
+      border: 1px solid var(--bdr2);
+      border-radius: 7px;
+      overflow: hidden
+    }
+
+    .seg-btn {
+      background: transparent;
+      border: none;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-family: var(--font);
+      color: var(--tx2);
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap
+    }
+
+    .seg-btn:hover {
+      color: var(--tx)
+    }
+
+    .seg-btn.active {
+      background: var(--sur);
+      color: var(--tx);
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .1)
+    }
+
+    .seg-btn.active.pending {
+      color: var(--yellow);
+      background: var(--ybg)
+    }
+
+    .seg-btn.active.unpaid {
+      color: var(--red);
+      background: var(--rbg)
+    }
+
+    .seg-btn.active.paid {
+      color: var(--green);
+      background: var(--gbg)
+    }
+
+    /* STOCKS */
+    .sgrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px
+    }
+
+    .sc {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      padding: 20px;
+      transition: border-color .2s
+    }
+
+    .sc:hover {
+      border-color: var(--gold)
+    }
+
+    .sc-name {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .sc-val {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--glt);
+      font-family: var(--mono);
+      letter-spacing: -1px
+    }
+
+    .sc-unit {
+      font-size: 14px;
+      color: var(--tx3);
+      font-weight: 400
+    }
+
+    .sc-conv {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--bdr)
+    }
+
+    .sc-cv {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--tx2);
+      font-family: var(--mono)
+    }
+
+    .sc-cu {
+      font-size: 10px;
+      color: var(--tx3);
+      margin-top: 1px
+    }
+
+    .smsg {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      padding: 32px 28px;
+      max-width: 560px
+    }
+
+    .smsg h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 10px
+    }
+
+    .smsg p {
+      font-size: 13px;
+      color: var(--tx2);
+      line-height: 1.7
+    }
+
+    .smsg code {
+      background: var(--sur2);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--glt)
+    }
+
+    .step {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px
+    }
+
+    .step-n {
+      background: var(--bdr2);
+      color: var(--tx2);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+      margin-top: 2px
+    }
+
+    /* STATS */
+    .sgr {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px
+    }
+
+    @media(max-width:900px) {
+      .sgr {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .cc {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      padding: 20px
+    }
+
+    .ct {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tx2);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: .06em
+    }
+
+    /* SYNC */
+    .btn-sync {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: rgba(201, 100, 66, .12);
+      border: 1px solid rgba(201, 100, 66, .35);
+      color: var(--accent-lt);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .18s
+    }
+
+    .btn-sync:hover {
+      background: rgba(201, 100, 66, .22)
+    }
+
+    .btn-sync:disabled {
+      opacity: .5;
+      cursor: not-allowed
+    }
+
+    .syn-st {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      display: none;
+      align-items: center;
+      gap: 6px
+    }
+
+    .syn-st.show {
+      display: inline-flex
+    }
+
+    .syn-st.ok {
+      background: var(--gbg);
+      color: var(--green)
+    }
+
+    .syn-st.err {
+      background: var(--rbg);
+      color: var(--red)
+    }
+
+    .syn-st.load {
+      background: var(--bbg);
+      color: var(--blue)
+    }
+
+    /* DATA/EXPLORE */
+    .db-hdr {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap
+    }
+
+    .db-badge {
+      background: var(--sur2);
+      border: 1px solid var(--bdr);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 12px;
+      color: var(--tx2);
+      font-family: var(--mono)
+    }
+
+    .db-badge span {
+      color: var(--accent-lt)
+    }
+
+    .db-srch {
+      background: var(--sur2);
+      border: 1px solid var(--bdr2);
+      border-radius: 7px;
+      padding: 6px 12px;
+      color: var(--tx);
+      font-family: var(--font);
+      font-size: 13px;
+      outline: none;
+      width: 200px
+    }
+
+    .db-srch:focus {
+      border-color: var(--gold)
+    }
+
+    .tbl-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px
+    }
+
+    .tbl-card {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      overflow: hidden
+    }
+
+    .tbl-hdr {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s
+    }
+
+    .tbl-hdr:hover {
+      background: var(--sur2)
+    }
+
+    .tbl-nm {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--tx);
+      font-family: var(--mono)
+    }
+
+    .tbl-rc {
+      font-size: 11px;
+      color: var(--tx3);
+      background: var(--sur2);
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-left: auto;
+      font-family: var(--mono)
+    }
+
+    .tbl-cc {
+      font-size: 11px;
+      color: var(--tx3);
+      font-family: var(--mono);
+      margin-left: 6px
+    }
+
+    .tbl-chv {
+      font-size: 10px;
+      color: var(--tx3);
+      transition: transform .2s;
+      margin-left: 6px
+    }
+
+    .tbl-chv.open {
+      transform: rotate(90deg)
+    }
+
+    .tbl-body {
+      display: none;
+      border-top: 1px solid var(--bdr)
+    }
+
+    .tbl-body.open {
+      display: block
+    }
+
+    .qbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--sur2);
+      border-bottom: 1px solid var(--bdr)
+    }
+
+    .qinp {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--bdr2);
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: var(--tx);
+      font-family: var(--mono);
+      font-size: 12px;
+      outline: none
+    }
+
+    .qinp:focus {
+      border-color: var(--gold)
+    }
+
+    .qbtn {
+      background: rgba(201, 100, 66, .15);
+      border: 1px solid rgba(201, 100, 66, .3);
+      border-radius: 6px;
+      color: var(--accent-lt);
+      font-size: 12px;
+      padding: 5px 14px;
+      cursor: pointer;
+      font-family: var(--font)
+    }
+
+    .qlim {
+      background: var(--bg);
+      border: 1px solid var(--bdr2);
+      border-radius: 6px;
+      color: var(--tx);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 5px 8px;
+      outline: none;
+      width: 80px
+    }
+
+    .cpills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--bdr)
+    }
+
+    .cp {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--sur2);
+      border: 1px solid var(--bdr);
+      border-radius: 5px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-family: var(--mono)
+    }
+
+    .dg-wrap {
+      overflow-x: auto;
+      max-height: 380px;
+      overflow-y: auto
+    }
+
+    .dg {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: var(--mono)
+    }
+
+    .dg thead {
+      position: sticky;
+      top: 0;
+      z-index: 2
+    }
+
+    .dg thead th {
+      background: var(--sur2);
+      padding: 7px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--tx3);
+      border-bottom: 1px solid var(--bdr);
+      white-space: nowrap
+    }
+
+    .dg tbody tr:hover td {
+      background: rgba(255, 255, 255, .03)
+    }
+
+    .dg td {
+      padding: 6px 12px;
+      border-bottom: 1px solid rgba(36, 48, 68, .6);
+      color: var(--tx2);
+      white-space: nowrap;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .dg td.null {
+      color: var(--tx3);
+      font-style: italic
+    }
+
+    .dg-footer {
+      padding: 7px 16px;
+      font-size: 11px;
+      color: var(--tx3);
+      border-top: 1px solid var(--bdr);
+      background: var(--sur2);
+      font-family: var(--mono)
+    }
+
+    /* IO EXPLORER */
+    .io-sbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap
+    }
+
+    .io-inp {
+      flex: 1;
+      background: var(--sur2);
+      border: 1px solid var(--bdr2);
+      border-radius: 7px;
+      padding: 7px 12px;
+      color: var(--tx);
+      font-family: var(--mono);
+      font-size: 12px;
+      outline: none;
+      min-width: 200px
+    }
+
+    .io-inp:focus {
+      border-color: var(--gold)
+    }
+
+    .io-btn {
+      background: rgba(201, 100, 66, .15);
+      border: 1px solid rgba(201, 100, 66, .3);
+      border-radius: 7px;
+      color: var(--accent-lt);
+      font-size: 12px;
+      padding: 6px 16px;
+      cursor: pointer;
+      font-family: var(--font);
+      white-space: nowrap
+    }
+
+    .io-panel {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      overflow: hidden
+    }
+
+    .io-pt {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--tx3);
+      padding: 10px 16px;
+      background: var(--sur2);
+      border-bottom: 1px solid var(--bdr);
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .io-pt span {
+      color: var(--glt);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 400;
+      text-transform: none
+    }
+
+    .sel-row td {
+      background: rgba(212, 146, 14, .10) !important
+    }
+
+    .io-clk:hover td {
+      background: rgba(255, 255, 255, .04) !important;
+      cursor: pointer
+    }
+
+    .rtabs {
+      display: flex;
+      border-bottom: 1px solid var(--bdr);
+      background: var(--sur2);
+      overflow-x: auto
+    }
+
+    .rtab {
+      padding: 8px 16px;
+      font-size: 12px;
+      color: var(--tx3);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all .15s;
+      user-select: none;
+      white-space: nowrap
+    }
+
+    .rtab:hover {
+      color: var(--tx)
+    }
+
+    .rtab.active {
+      color: var(--accent-lt);
+      border-bottom-color: var(--accent-lt)
+    }
+
+    .rtab-b {
+      background: var(--bdr2);
+      border-radius: 99px;
+      font-size: 10px;
+      padding: 1px 5px;
+      margin-left: 3px;
+      font-family: var(--mono)
+    }
+
+    .rpanel {
+      display: none
+    }
+
+    .rpanel.active {
+      display: block
+    }
+
+    .no-match {
+      padding: 24px;
+      text-align: center;
+      color: var(--tx3);
+      font-size: 13px
+    }
+
+    .mv {
+      padding: 16px
+    }
+
+    .mv-sec {
+      margin-bottom: 16px
+    }
+
+    .mv-sec-t {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--tx3);
+      margin-bottom: 8px
+    }
+
+    .mkv {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px
+    }
+
+    .mkvi {
+      background: var(--sur2);
+      border: 1px solid var(--bdr);
+      border-radius: 7px;
+      padding: 8px 12px
+    }
+
+    .mkv-k {
+      font-size: 10px;
+      color: var(--tx3);
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: .04em
+    }
+
+    .mkv-v {
+      font-size: 13px;
+      color: var(--tx);
+      font-family: var(--mono)
+    }
+
+    /* MISC */
+    .banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px
+    }
+
+    .banner.warn {
+      background: rgba(245, 197, 24, .1);
+      border: 1px solid rgba(245, 197, 24, .25);
+      color: var(--yellow)
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--tx3)
+    }
+
+    .spin {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--bdr2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 12px
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--tx3)
+    }
+
+    .sec-t {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--tx3);
+      margin-bottom: 14px
+    }
+
+    /* TRIAL BALANCE */
+    .stk-grp-hdr td {
+      background: rgba(255, 255, 255, .05);
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--tx);
+      border-top: 2px solid var(--bdr2);
+      letter-spacing: .02em
+    }
+
+    .stk-grp-tot td {
+      border-top: 1px solid var(--bdr2);
+      border-bottom: 2px solid var(--bdr2);
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--tx2);
+      padding: 5px 14px
+    }
+
+    .stk-grand-tot td {
+      border-top: 2px solid var(--bdr2);
+      background: rgba(255, 255, 255, .04);
+      font-size: 13px;
+      padding: 8px 14px
+    }
+
+    .stk-acc {
+      padding-left: 24px !important;
+      color: var(--tx2)
+    }
+
+    .stk-jama {
+      color: var(--green) !important
+    }
+
+    .stk-kharchu {
+      color: var(--accent-lt) !important
+    }
+
+    .print-pay-row {
+      display: none
+    }
+
+    .print-brand-header {
+      display: none
+    }
+
+    .ph-logo {
+      display: none !important
+    }
+
+    .col-mode {
+      margin-left: auto
+    }
+
+    .btn-print {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      user-select: none
+    }
+
+    .btn-print:hover {
+      background: var(--accent-lt)
+    }
+
+    .btn-print.btn-export {
+      background: var(--green)
+    }
+
+    .btn-print.btn-export:hover {
+      background: #1e5835
+    }
+
+    .btn-print svg {
+      flex-shrink: 0
+    }
+
+    @media print {
+      .sb {
+        display: none !important;
+      }
+
+      .fbar,
+      button,
+      .btn-print,
+      .btn-rst,
+      .seg-btn,
+      #db-error-overlay,
+      #sync-status-bar,
+      #sync-indicator,
+      #db-overlay-close,
+      .io-sbar {
+        display: none !important;
+      }
+
+      .main {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        width: 100% !important;
+      }
+
+      .tw,
+      .dg-wrap {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+        border: none !important;
+        background: transparent !important;
+      }
+
+      table {
+        page-break-inside: auto;
+      }
+
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      .ph-sticky {
+        position: static !important;
+        background: transparent !important;
+        border-bottom: 1px solid #000 !important;
+        padding: 0 0 10px 0 !important;
+      }
+
+      @page {
+        margin: 0;
+      }
+
+      body {
+        background: #fff !important;
+        color: #000 !important;
+        padding: 1.5cm 1.2cm !important;
+      }
+
+      .col-mode {
+        display: none !important;
+      }
+
+      .print-pay-row {
+        display: table-row !important;
+      }
+
+      .screen-header-title {
+        display: none !important;
+      }
+
+      .print-brand-header {
+        display: flex !important;
+        align-items: center;
+        gap: 16px;
+        width: 100%;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 12px;
+      }
+
+      .pbh-logo {
+        width: 60px !important;
+        height: 60px !important;
+        border-radius: 50%;
+        object-fit: contain;
+      }
+
+      .pbh-text {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: left;
+      }
+
+      .pbh-name {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        color: #111 !important;
+        line-height: 1.2;
+      }
+
+      .pbh-subtitle {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: #555 !important;
+        margin-top: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .pbh-meta {
+        font-size: 12px !important;
+        color: #777 !important;
+        margin-top: 4px;
+      }
+
+      .ph-logo {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Full-screen database error/selection overlay -->
+  <div id="db-error-overlay"
+    style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(250,247,242,0.98); z-index:9999; align-items:center; justify-content:center; padding:20px; font-family:'Inter',sans-serif;">
+    <div
+      style="background:var(--sur); border:1px solid var(--bdr); border-radius:12px; padding:40px; max-width:500px; text-align:center; box-shadow:0 12px 36px rgba(0,0,0,0.08);">
+      <div style="font-size:48px; margin-bottom:20px;">💾</div>
+      <h2 style="font-size:20px; font-weight:600; margin-bottom:12px; color:var(--tx);">No Database File Selected</h2>
+      <p style="font-size:14px; color:var(--tx2); margin-bottom:24px; line-height:1.6;">
+        Please select the {{ industry_name }} Access Database (.mdb) file from your secure USB pendrive to view the
+        dashboard.
+      </p>
+      <button onclick="changeDatabase()"
+        style="background:var(--accent); color:#fff; border:none; padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; cursor:pointer; transition:background 0.2s; display:inline-flex; align-items:center; gap:8px;"
+        onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='var(--accent)'">
+        📁 Select Database File
+      </button>
+    </div>
+  </div>
+
+  <nav class="sb">
+    <div class="sb-logo">
+      <img src="/{{ industry_logo }}" alt="Logo" class="logo-img" />
+      <div class="logo-title">{{ industry_name }}</div>
+    </div>
+    <div class="sb-nav">
+      <div class="nav-lbl">Menu</div>
+      <div class="nav-item active" data-page="orders">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">
+            <path
+              d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+          </svg></span>
+        <span class="nav-txt"> Sales</span>
+      </div>
+      <div class="nav-item" data-page="purchases">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">
+            <path
+              d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" />
+          </svg></span>
+        <span class="nav-txt"> Purchases</span>
+      </div>
+      <div class="nav-item" data-page="journal">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">
+            <path
+              d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 4h2v5l-1-.75L9 9V4zm9 16H6V4h1c.55 0 1 .45 1 1v5l2.5-1.88L13 10V5c0-.55.45-1 1-1h4v16z" />
+          </svg></span>
+        <span class="nav-txt"> Journal</span>
+      </div>
+      <div class="nav-item" data-page="stocks">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">
+            <path
+              d="M12 22h10v-4h-2v-4h-2v-4h-2V6h-2V2H2v20h10zM4 4h4v2H4V4zm0 4h4v2H4V8zm0 4h4v2H4v-2zm0 4h4v2H4v-2zm6 2h4v2h-4v-2zm6-4h4v2h-4v-2zm0-4h4v2h-4v-2zm0-4h4v2h-4V4z" />
+          </svg></span>
+        <span class="nav-txt"> Stocks</span>
+      </div>
+      <!--
+      <div class="nav-item" data-page="stats">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">
+            <path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z" />
+          </svg></span>
+        <span class="nav-txt"> Stats</span>
+      </div>
+      <div class="nav-item" data-page="data">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">
+            <path
+              d="M20 13H4c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2zm-2 5h-2v-2h2v2zm2-13H4c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-2 5h-2V8h2v2z" />
+          </svg></span>
+        <span class="nav-txt"> Data</span>
+      </div>
+      <div class="nav-item" data-page="explore">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">
+            <path
+              d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+          </svg></span>
+        <span class="nav-txt"> Explore</span>
+      </div>
+      -->
+      {% if network_url %}
+      <div class="sb-db"
+        style="padding:10px 14px; border-top:1px solid var(--bdr); min-width:var(--sw); font-size:11px; color:var(--txt-muted); line-height:1.4;">
+        <div
+          style="display:flex; align-items:center; gap:6px; font-weight:600; margin-bottom:4px; color:var(--accent);">
+          <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+          </svg>
+          LAN Network Link
+        </div>
+        <div
+          style="font-family:monospace; word-break:break-all; background:var(--bg-hover); padding:4px 6px; border-radius:4px; border:1px solid var(--bdr); user-select:all; color:var(--txt);">
+          {{ network_url }}
+        </div>
+      </div>
+      {% endif %}
+      <div class="sb-db" style="padding:6px; border-top:1px solid var(--bdr); min-width:var(--sw)">
+        <div class="nav-item" id="btn-change-db" onclick="changeDatabase()"
+          style="margin-bottom:6px; padding:8px 12px;">
+          <span class="nav-icon"><svg viewBox="0 0 24 24">
+              <path
+                d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+            </svg></span>
+          <span class="nav-txt" id="txt-db-name"
+            style="overflow:hidden; text-overflow:ellipsis; max-width:140px;">Select DB…</span>
+        </div>
+        <div class="nav-item" id="btn-close-db" onclick="closeDashboard()"
+          style="margin-bottom:0; padding:8px 12px; color:#f87171;">
+          <span class="nav-icon"><svg viewBox="0 0 24 24" style="fill:currentColor;">
+              <path
+                d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C18.43 8.35 19 10.11 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-1.89.57-3.65 1.58-5.41L5.17 5.17C3.21 7.27 2 10.05 2 13c0 5.52 4.48 10 10 10s10-4.48 10-10c0-2.95-1.21-5.73-3.17-7.83z" />
+            </svg></span>
+          <span class="nav-txt">Close Dashboard</span>
+        </div>
+      </div>
+      <div class="sb-footer">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">
+            <path
+              d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+          </svg></span>
+        <span class="sb-foot-txt"> Last sync<br><span id="sync-time">—</span></span>
+      </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- ORDERS -->
+    <div class="page active" id="page-orders">
+      <!-- Sticky title header only -->
+      <div class="ph ph-sticky">
+        <div class="print-brand-header">
+          <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
+          <div class="pbh-text">
+            <div class="pbh-name">{{ industry_name }}</div>
+            {% if industry_address %}<div class="pbh-meta">{{ industry_address }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="screen-header-title">
+          <div class="pt">Sales</div>
+        </div>
+        <div style="display:flex;gap:8px" class="col-mode">
+          <button class="btn-print" onclick="window.print()">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
+              <path
+                d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" />
+            </svg>
+            Print PDF
+          </button>
+          <button class="btn-print btn-export" onclick="exportToExcel('#page-orders table', 'Sales_Report')">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
+              <path
+                d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+            </svg>
+            Export Excel
+          </button>
+        </div>
+      </div>
+      <!-- Filters scroll normally -->
+      <div class="pc">
+        <div class="fbar">
+          <div class="fg"><span class="fl">Bill No</span><input type="text" id="f-ioid" placeholder="Search…"
+              style="width:80px" oninput="applyF()" /></div>
+          <div class="fg"><span class="fl">Broker</span><input type="text" id="f-broker" placeholder="Search…"
+              style="width:110px" oninput="applyF()" /></div>
+          <div class="fg"><span class="fl">Party</span><input type="text" id="f-party" placeholder="Search…"
+              style="width:120px" oninput="applyF()" /></div>
+          <div class="fg"><span class="fl">Variety</span>
+            <div class="ms-wrap" id="ms-variety">
+              <div class="ms-trig" onclick="toggleMs('ms-variety')">
+                <span class="ms-pills" id="ms-variety-pills"><span class="ms-ph">All</span></span>
+                <span class="ms-arr">▼</span>
+              </div>
+              <div class="ms-panel" id="ms-variety-panel"></div>
+            </div>
+          </div>
+          <div class="fg"><span class="fl">From</span><input type="date" id="f-from" onchange="applyF()" /></div>
+          <div class="fg"><span class="fl">To</span><input type="date" id="f-to" onchange="applyF()" /></div>
+          <div class="fg"><span class="fl">Payment</span>
+            <div class="seg" id="pay-seg">
+              <button class="seg-btn active" id="pseg-all" onclick="setPayFilter('all')">All</button>
+              <button class="seg-btn" id="pseg-pending" onclick="setPayFilter('pending')">Pending</button>
+              <button class="seg-btn" id="pseg-unpaid" onclick="setPayFilter('unpaid')">Unpaid</button>
+              <button class="seg-btn" id="pseg-paid" onclick="setPayFilter('paid')">Paid</button>
+            </div>
+          </div>
+          <button class="btn-rst" onclick="resetF()">Reset</button>
+          <span class="fcnt" id="fcnt"></span>
+        </div>
+        <div class="tw">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:24px"></th>
+                <th class="sort" id="th-id" onclick="sortCol('bill_no')">Bill No</th>
+                <th>Broker</th>
+                <th>Party</th>
+                <th class="sort desc" id="th-date" onclick="sortCol('loaded_date')">Loaded Date</th>
+                <th>Type</th>
+                <th class="col-mode">Mode</th>
+                <th>Variety</th>
+                <th class="num">Bags</th>
+                <th class="num">Unit</th>
+                <th class="num">Qtl</th>
+                <th class="num">Rate</th>
+                <th class="num">Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body">
+              <tr>
+                <td colspan="14" class="td">
+                  <div class="loading">
+                    <div class="spin"></div>Loading orders…
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PURCHASES -->
+    <div class="page" id="page-purchases">
+      <!-- Sticky title header only -->
+      <div class="ph ph-sticky">
+        <div class="print-brand-header">
+          <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
+          <div class="pbh-text">
+            <div class="pbh-name">{{ industry_name }}</div>
+            <div class="pbh-subtitle">Purchases Report</div>
+            {% if industry_address %}<div class="pbh-meta">{{ industry_address }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="screen-header-title">
+          <div class="pt">Purchases</div>
+        </div>
+        <div style="display:flex;gap:8px" class="col-mode">
+          <button class="btn-print" onclick="window.print()">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
+              <path
+                d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" />
+            </svg>
+            Print PDF
+          </button>
+          <button class="btn-print btn-export" onclick="exportToExcel('#page-purchases table', 'Purchases_Report')">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
+              <path
+                d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+            </svg>
+            Export Excel
+          </button>
+        </div>
+      </div>
+      <!-- Filters scroll normally -->
+      <div class="pc">
+        <div class="fbar">
+          <div class="fg"><span class="fl">Bill No</span><input type="text" id="pur-f-ioid" placeholder="Search…"
+              style="width:80px" oninput="purApplyF()" /></div>
+          <div class="fg"><span class="fl">Broker</span><input type="text" id="pur-f-broker" placeholder="Search…"
+              style="width:110px" oninput="purApplyF()" /></div>
+          <div class="fg"><span class="fl">Party</span><input type="text" id="pur-f-party" placeholder="Search…"
+              style="width:120px" oninput="purApplyF()" /></div>
+          <div class="fg"><span class="fl">Variety</span>
+            <div class="ms-wrap" id="pur-ms-variety">
+              <div class="ms-trig" onclick="toggleMs('pur-ms-variety')">
+                <span class="ms-pills" id="pur-ms-variety-pills"><span class="ms-ph">All</span></span>
+                <span class="ms-arr">▼</span>
+              </div>
+              <div class="ms-panel" id="pur-ms-variety-panel"></div>
+            </div>
+          </div>
+          <div class="fg"><span class="fl">From</span><input type="date" id="pur-f-from" onchange="purApplyF()" /></div>
+          <div class="fg"><span class="fl">To</span><input type="date" id="pur-f-to" onchange="purApplyF()" /></div>
+          <div class="fg"><span class="fl">Payment</span>
+            <div class="seg" id="pur-pay-seg">
+              <button class="seg-btn active" id="pur-pseg-all" onclick="purSetPayFilter('all')">All</button>
+              <button class="seg-btn" id="pur-pseg-pending" onclick="purSetPayFilter('pending')">Pending</button>
+              <button class="seg-btn" id="pur-pseg-unpaid" onclick="purSetPayFilter('unpaid')">Unpaid</button>
+              <button class="seg-btn" id="pur-pseg-paid" onclick="purSetPayFilter('paid')">Paid</button>
+            </div>
+          </div>
+          <button class="btn-rst" onclick="purResetF()">Reset</button>
+          <span class="fcnt" id="pur-fcnt"></span>
+        </div>
+        <div class="tw">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:24px"></th>
+                <th class="sort" id="pur-th-id" onclick="purSortCol('bill_no')">Bill No</th>
+                <th>Broker</th>
+                <th>Party</th>
+                <th class="sort desc" id="pur-th-date" onclick="purSortCol('loaded_date')">Loaded Date</th>
+                <th>Type</th>
+                <th class="col-mode">Mode</th>
+                <th>Variety</th>
+                <th class="num">Bags</th>
+                <th class="num">Unit</th>
+                <th class="num">Qtl</th>
+                <th class="num">Rate</th>
+                <th class="num">Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="pur-body">
+              <tr>
+                <td colspan="14" class="td">
+                  <div class="loading">
+                    <div class="spin"></div>Loading purchases…
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STOCKS -->
+    <div class="page" id="page-stocks">
+      <div class="ph ph-sticky">
+        <div class="print-brand-header">
+          <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
+          <div class="pbh-text">
+            <div class="pbh-name">{{ industry_name }}</div>
+            <div class="pbh-subtitle">Stocks Report</div>
+            {% if industry_address %}<div class="pbh-meta">{{ industry_address }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="screen-header-title">
+          <div class="pt">Stocks</div>
+        </div>
+        <div style="display:flex;gap:8px" class="col-mode">
+          <button class="btn-print" onclick="window.print()">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
+              <path
+                d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" />
+            </svg>
+            Print PDF
+          </button>
+          <button class="btn-print btn-export" onclick="exportToExcel('#page-stocks table', 'Stocks_Report')">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
+              <path
+                d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+            </svg>
+            Export Excel
+          </button>
+        </div>
+      </div>
+      <div class="pc">
+        <div class="fbar" id="stk-fbar">
+          <div class="fg"><span class="fl">From</span><input type="date" id="sf-from" onchange="stkApplyF()" /></div>
+          <div class="fg"><span class="fl">To</span><input type="date" id="sf-to" onchange="stkApplyF()" /></div>
+          <div class="fg"><span class="fl">Mode</span>
+            <select id="sf-mode" onchange="stkApplyF()"
+              style="height:28px;background:var(--inp);color:var(--tx);border:1px solid var(--bdr);border-radius:5px;padding:0 8px;font-size:12px">
+              <option value="all">All</option>
+              <option value="Purchases">Purchases only</option>
+              <option value="Sales">Sales only</option>
+            </select>
+          </div>
+          <div class="fg"><span class="fl">Variety</span><input type="text" id="sf-variety" placeholder="Filter…"
+              style="width:130px" oninput="stkApplyF()" /></div>
+          <button class="btn-rst" onclick="stkResetF()">Reset</button>
+          <span class="fcnt" id="sfcnt"></span>
+        </div>
+        <div class="tw">
+          <table id="stk-table">
+            <thead>
+              <tr>
+                <th style="min-width:280px">Account</th>
+                <th class="num" style="width:90px">Bags</th>
+                <th class="num" style="width:100px">Qtls</th>
+                <th class="num" style="width:150px">Jama</th>
+                <th class="num" style="width:150px">Kharchu</th>
+              </tr>
+            </thead>
+            <tbody id="stk-body">
+              <tr>
+                <td colspan="5" class="td">
+                  <div class="loading">
+                    <div class="spin"></div>Loading…
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="page" id="page-stats">
+      <div class="ph">
+        <div>
+          <div class="pt">Analytics</div>
+          <div class="ps">Derived from orders</div>
+        </div>
+      </div>
+      <div class="pc">
+        <div class="cards" id="stats-cards"></div>
+        <div class="sgr" id="stats-charts">
+          <div class="loading">
+            <div class="spin"></div>Loading…
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div class="page" id="page-data">
+      <div class="ph">
+        <div>
+          <div class="pt">Database Tables</div>
+          <div class="ps" id="db-filename-sub">Reading database…</div>
+        </div>
+      </div>
+      <div class="pc" id="data-content">
+        <div class="loading">
+          <div class="spin"></div>Reading tables…
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPLORE -->
+    <div class="page" id="page-explore">
+      <div class="ph">
+        <div>
+          <div class="pt">IO Explorer</div>
+          <div class="ps">Filter bills — see IO + Details + Journal merged</div>
+        </div>
+      </div>
+      <div class="pc" id="explore-content">
+        <div class="loading">
+          <div class="spin"></div>Loading IO table…
+        </div>
+      </div>
+    </div>
+
+    <!-- JOURNAL -->
+    <div class="page" id="page-journal">
+      <div class="ph ph-sticky">
+        <div class="print-brand-header">
+          <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
+          <div class="pbh-text">
+            <div class="pbh-name">{{ industry_name }}</div>
+            <div class="pbh-subtitle">Journal Report</div>
+            {% if industry_address %}<div class="pbh-meta">{{ industry_address }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="screen-header-title">
+          <div class="pt">Journal</div>
+        </div>
+        <div style="display:flex;gap:8px" class="col-mode">
+          <button class="btn-print" onclick="window.print()">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
+              <path
+                d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" />
+            </svg>
+            Print PDF
+          </button>
+          <button class="btn-print btn-export" onclick="exportToExcel('#page-journal table', 'Journal_Report')">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
+              <path
+                d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" />
+            </svg>
+            Export Excel
+          </button>
+        </div>
+      </div>
+      <div class="pc">
+        <div class="fbar" id="jnl-fbar">
+          <div class="fg"><span class="fl">Dr Account</span><input type="text" id="jf-dr" placeholder="Search…"
+              style="width:140px" oninput="jApplyF()" /></div>
+          <div class="fg"><span class="fl">Cr Account</span><input type="text" id="jf-cr" placeholder="Search…"
+              style="width:140px" oninput="jApplyF()" /></div>
+          <div class="fg"><span class="fl">From</span><input type="date" id="jf-from" onchange="jApplyF()" /></div>
+          <div class="fg"><span class="fl">To</span><input type="date" id="jf-to" onchange="jApplyF()" /></div>
+          <button class="btn-rst" onclick="jResetF()">Reset</button>
+          <span class="fcnt" id="jfcnt"></span>
+        </div>
+        <div class="tw">
+          <table>
+            <thead>
+              <tr>
+                <th class="sort" id="jth-id" onclick="jSort('journal_id')">Journal ID</th>
+                <th class="sort desc" id="jth-date" onclick="jSort('date')">Date</th>
+                <th>Dr Account</th>
+                <th class="num">Amount</th>
+                <th>Cr Account</th>
+                <th>Details</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody id="jnl-body">
+              <tr>
+                <td colspan="7" class="td">
+                  <div class="loading">
+                    <div class="spin"></div>Loading journal…
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const CURR = "";
+    const R_SYM = CURR;
+    /* ═══════════════════════════════════════════════════════════ CORE */
+    const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const fmt = (n, d = 2) => Number(n).toLocaleString('en-IN', { maximumFractionDigits: d, minimumFractionDigits: d });
+    const fmtN = n => Number(n).toLocaleString('en-IN');
+    const cap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
+    const nowStr = () => { const d = new Date(); return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + ' · ' + d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) };
+
+    function parseDateStr(s) {
+      if (!s) return null;
+      let m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+      m = s.match(/(\d{2})\.(\d{2})\.(\d{2,4})/);
+      if (m) { let y = +m[3]; if (y < 100) y += 2000; return new Date(y, +m[2] - 1, +m[1]); }
+      return null;
+    }
+    function inputToDate(s) { if (!s) return null; const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) }
+
+    let allOrders = [], orderSort = { col: 'loaded_date', dir: -1 }, payFilter = 'all';
+    let allPurchases = [], purSort = { col: 'loaded_date', dir: -1 }, purPayFilter = 'all';
+    let chartsInit = false, dataLoaded = false, exploreLoaded = false, stocksLoaded = false, jnlLoaded = false, purLoaded = false;
+
+    /* NAV */
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const p = el.dataset.page;
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('page-' + p).classList.add('active');
+        if (p === 'purchases' && !purLoaded) loadPurchases();
+        if (p === 'journal' && !jnlLoaded) loadJournal();
+        if (p === 'stocks' && !stocksLoaded) loadStocks();
+        if (p === 'stats' && !chartsInit) loadStats();
+        if (p === 'data' && !dataLoaded) loadData();
+        if (p === 'explore' && !exploreLoaded) loadExplore();
+      });
+    });
+    document.addEventListener('click', e => {
+      document.querySelectorAll('.ms-panel.open').forEach(panel => {
+        const wrap = panel.closest('.ms-wrap');
+        if (wrap) {
+          if (wrap.contains(e.target)) return;
+          const rect = panel.getBoundingClientRect();
+          if (
+            e.clientX >= rect.left &&
+            e.clientX <= rect.right &&
+            e.clientY >= rect.top &&
+            e.clientY <= rect.bottom
+          ) {
+            return;
+          }
+          panel.classList.remove('open');
+          const trig = wrap.querySelector('.ms-trig');
+          if (trig) trig.classList.remove('open');
+        }
+      });
+    });
+
+    /* MULTI-SELECT */
+    function toggleMs(id) {
+      const panel = document.getElementById(id + '-panel');
+      const trig = document.getElementById(id).querySelector('.ms-trig');
+      const isOpen = panel.classList.contains('open');
+      document.querySelectorAll('.ms-panel.open').forEach(p => p.classList.remove('open'));
+      document.querySelectorAll('.ms-trig.open').forEach(t => t.classList.remove('open'));
+      if (!isOpen) {
+        // Position panel using fixed coords from trigger's bounding rect
+        const rect = trig.getBoundingClientRect();
+        panel.style.top = (rect.bottom + 4) + 'px';
+        panel.style.left = rect.left + 'px';
+        panel.style.minWidth = Math.max(rect.width, 160) + 'px';
+        panel.classList.add('open');
+        trig.classList.add('open');
+      }
+    }
+    // Close dropdown if user scrolls (position would go stale)
+    document.addEventListener('scroll', e => {
+      if (e.target.closest && e.target.closest('.ms-panel')) return;
+      document.querySelectorAll('.ms-panel.open').forEach(p => p.classList.remove('open'));
+      document.querySelectorAll('.ms-trig.open').forEach(t => t.classList.remove('open'));
+    }, true);
+    function msChange(id) {
+      const panel = document.getElementById(id + '-panel');
+      const pills = document.getElementById(id + '-pills');
+      const checked = [...panel.querySelectorAll('input:checked')].map(c => c.value);
+      pills.innerHTML = checked.length ? checked.map(v => `<span class="ms-pill">${esc(v)}</span>`).join('') : '<span class="ms-ph">All</span>';
+      if (id.startsWith('pur-')) purApplyF();
+      else applyF();
+    }
+    function getMsVals(id) { return [...document.getElementById(id + '-panel').querySelectorAll('input:checked')].map(c => c.value) }
+    function populateMs(id, vals) {
+      document.getElementById(id + '-panel').innerHTML = vals.map(v =>
+        `<label class="ms-opt"><input type="checkbox" value="${esc(v)}" onchange="msChange('${id}')"> ${esc(v)}</label>`).join('');
+    }
+
+    /* SORT */
+    function sortCol(col) {
+      if (orderSort.col === col) orderSort.dir *= -1;
+      else { orderSort.col = col; orderSort.dir = 1 }
+      document.querySelectorAll('thead th').forEach(th => th.classList.remove('asc', 'desc'));
+      const th = document.getElementById('th-' + ((col === 'io_id' || col === 'bill_no') ? 'id' : 'date'));
+      if (th) th.classList.add(orderSort.dir === 1 ? 'asc' : 'desc');
+      renderOrders(getFiltered());
+    }
+
+    /* ═══════════════════════════════════════════════════════════ ORDERS */
+    async function loadOrders() {
+      try {
+        const res = await fetch('/api/orders');
+        const data = await res.json();
+        document.getElementById('sync-time').textContent = nowStr();
+        if (data.error) {
+          const msgs = { file_not_found: '⚠ .mdb file not found — select or place the database file in the data/ folder', not_installed: '⚠ Run setup.bat to install access_parser' };
+          document.getElementById('orders-body').innerHTML = `<tr><td colspan="13" class="td"><div class="banner warn">${msgs[data.error] || '⚠ ' + esc(data.error)}</div></td></tr>`;
+          return;
+        }
+        allOrders = data.orders || [];
+        // Collect all unique varieties from individual detail rows
+        const varSet = new Set();
+        allOrders.forEach(o => (o.details || []).forEach(d => { if (d.variety) varSet.add(d.variety) }));
+        populateMs('ms-variety', [...varSet].sort());
+        renderOrders(getFiltered());
+        // Re-measure now that the filter bar is fully rendered
+        setTimeout(setPhHeight, 50);
+      } catch (e) {
+        document.getElementById('orders-body').innerHTML = `<tr><td colspan="13" class="td"><div class="banner warn">⚠ ${e.message}</div></td></tr>`;
+      }
+    }
+
+    function getFiltered() {
+      const ioid = document.getElementById('f-ioid').value.toLowerCase();
+      const party = document.getElementById('f-party').value.toLowerCase();
+      const broker = document.getElementById('f-broker').value.toLowerCase();
+      const varieties = getMsVals('ms-variety');
+      const dateFrom = inputToDate(document.getElementById('f-from').value);
+      const dateTo = inputToDate(document.getElementById('f-to').value);
+      let rows = allOrders.filter(o => {
+        if (ioid && !String(o.io_id).toLowerCase().includes(ioid) && !String(o.bill_no || '').toLowerCase().includes(ioid)) return false;
+        if (party && !o.party.toLowerCase().includes(party)) return false;
+        if (broker && !o.broker.toLowerCase().includes(broker)) return false;
+        if (varieties.length) {
+          const detVars = (o.details || []).map(d => d.variety);
+          if (!varieties.some(v => detVars.includes(v))) return false;
+        }
+        if (payFilter === 'pending' && (o.balance ?? o.amount) <= 0) return false;
+        if (payFilter === 'unpaid' && (o.paid > 0 || (o.balance ?? o.amount) <= 0)) return false;
+        if (payFilter === 'paid' && (o.balance ?? o.amount) > 0) return false;
+        const d = parseDateStr(o.loaded_date);
+        if (dateFrom && d && d < dateFrom) return false;
+        if (dateTo && d && d > dateTo) return false;
+        return true;
+      });
+      if (orderSort.col) {
+        rows = [...rows].sort((a, b) => {
+          let va = a[orderSort.col] || '', vb = b[orderSort.col] || '';
+          if (orderSort.col === 'loaded_date') {
+            va = parseDateStr(va) || new Date(0); vb = parseDateStr(vb) || new Date(0);
+            return orderSort.dir * (va - vb);
+          }
+          // Numeric sort for io_id (strings like "3754" must not compare as text)
+          const na = Number(va), nb = Number(vb);
+          if (!isNaN(na) && !isNaN(nb)) return orderSort.dir * (na - nb);
+          return orderSort.dir * String(va).localeCompare(String(vb));
+        });
+      }
+      return rows;
+    }
+    function applyF() { renderOrders(getFiltered()) }
+    function resetF() {
+      document.getElementById('f-ioid').value = '';
+      document.getElementById('f-party').value = '';
+      document.getElementById('f-broker').value = '';
+      document.getElementById('f-from').value = '';
+      document.getElementById('f-to').value = '';
+      ['ms-variety'].forEach(id => {
+        document.getElementById(id + '-panel').querySelectorAll('input').forEach(c => c.checked = false);
+        msChange(id);
+      });
+      orderSort = { col: 'loaded_date', dir: -1 };
+      payFilter = 'all';
+      document.querySelectorAll('#pay-seg .seg-btn').forEach(b => b.classList.remove('active', 'pending', 'unpaid', 'paid'));
+      document.getElementById('pseg-all')?.classList.add('active');
+      document.querySelectorAll('thead th').forEach(th => th.classList.remove('asc', 'desc'));
+      document.getElementById('th-date')?.classList.add('desc');
+      renderOrders(getFiltered());
+    }
+
+    function renderOrders(orders) {
+      document.getElementById('fcnt').textContent = `${orders.length} of ${allOrders.length} sales`;
+      const tbody = document.getElementById('orders-body');
+      if (!orders.length) { tbody.innerHTML = `<tr><td colspan="14" class="td"><div class="empty">No sales match filters.</div></td></tr>`; return }
+      let html = '';
+      orders.forEach((o, i) => {
+        const details = o.details || [];
+        const isMulti = details.length > 1;
+        // Helper: blank a column if detail values are not all the same
+        const uniq = field => [...new Set(details.map(d => String(d[field] ?? '')))]
+        const sameVal = field => uniq(field).length <= 1;
+        // Variety: blank if different across details
+        const varietyCell = (isMulti && !sameVal('variety')) ? '' : esc(o.variety);
+        // Unit: blank if different across details, show total if same
+        const unitCell = (isMulti && !sameVal('unit')) ? '' : esc(details[0]?.unit || o.unit);
+        // Rate cell: blank/see↓ if multi, normal if single
+        const rateCell = isMulti
+          ? (sameVal('rate') ? `${R_SYM}${fmt(details[0].rate, 0)}` : `<span style="font-size:11px;color:var(--tx3)">see ↓</span>`)
+          : `${R_SYM}${fmt(details[0]?.rate || 0, 0)}`;
+        // Order ID badge
+        const displayId = o.bill_no || o.io_id;
+        const idBadge = isMulti
+          ? `${esc(displayId)}<sup title="${details.length} IO Detail rows" style="font-size:9px;color:var(--accent);margin-left:3px;font-family:var(--mono)">⊕${details.length}</sup>`
+          : esc(displayId);
+        // Payment status badge
+        const paid = o.paid || 0, bal = o.balance ?? o.amount;
+        let stCls, stTxt;
+        if (bal <= 0) { stCls = 'paid'; stTxt = 'Paid'; }
+        else if (paid > 0) { stCls = 'partial'; stTxt = 'Partial'; }
+        else { stCls = 'unpaid'; stTxt = 'Unpaid'; }
+        const statusBadge = `<span class="badge ${stCls}">${stTxt}</span>`;
+        html += `
+    <tr class="dr" onclick="toggleExpand(${i})">
+      <td class="td" style="padding:0 6px 0 10px"><span class="chev" id="chev-${i}">▶</span></td>
+      <td class="td num" style="font-weight:600;color:var(--accent-lt)">${idBadge}</td>
+      <td class="td col-broker" title="${esc(o.broker)}">${esc(o.broker)}</td>
+      <td class="td col-party" style="font-weight:500" title="${esc(o.party)}">${esc(o.party)}</td>
+      <td class="td num">${esc(o.loaded_date)}</td>
+      <td class="td" style="font-size:12px;color:var(--tx2)">${esc(o.type)}</td>
+      <td class="td col-mode" style="font-size:12px;color:var(--tx2)">${esc(o.mode)}</td>
+      <td class="td col-variety" title="${esc(varietyCell)}">${varietyCell}</td>
+      <td class="td num">${fmtN(o.bags)}</td>
+      <td class="td num">${unitCell}</td>
+      <td class="td num">${fmt(o.qtl)}</td>
+      <td class="td num">${rateCell}</td>
+      <td class="td num">${R_SYM}${fmt(o.amount, 0)}</td>
+      <td class="td">${statusBadge}</td>
+    </tr>`;
+        if (bal > 0) {
+          html += `
+    <tr class="print-pay-row">
+      <td class="td" style="padding:0"></td>
+      <td class="td" colspan="13" style="font-size:12.5px;color:#333;padding:6px 12px;background:#fcfbfa;border-bottom:1px solid #ddd;line-height:1.4;">
+        ${getCompactPayLine(o)}
+      </td>
+    </tr>`;
+        }
+        if (isMulti) {
+          details.forEach((d, di) => {
+            html += `
+        <tr class="det-row">
+          <td class="td" style="padding:0 6px 0 10px"><span class="det-num">${di + 1}</span></td>
+          <td class="td num" style="color:var(--tx3);font-size:11px">↳</td>
+          <td class="td" colspan="2" style="font-size:12px;color:var(--tx3)">Detail ${di + 1}</td>
+          <td class="td"></td><td class="td"></td><td class="td col-mode"></td>
+          <td class="td col-variety" style="font-weight:500" title="${esc(d.variety)}">${esc(d.variety)}</td>
+          <td class="td num">${fmtN(d.bags)}</td>
+          <td class="td num">${esc(d.unit)}</td>
+          <td class="td num">${fmt(d.qtl)}</td>
+          <td class="td num">${R_SYM}${fmt(d.rate, 0)}</td>
+          <td class="td num" style="color:var(--accent-lt)">${R_SYM}${fmt(d.amount, 0)}</td>
+          <td class="td"></td>
+        </tr>`;
+          });
+          html += `
+      <tr class="det-total">
+        <td class="td"></td>
+        <td class="td" colspan="5" style="font-size:12px;color:var(--tx2);padding-left:12px">Total — ${details.length} lines</td>
+        <td class="td col-mode"></td>
+        <td class="td"></td>
+        <td class="td num">${fmtN(o.bags)}</td>
+        <td class="td num">${esc(o.unit)}</td>
+        <td class="td num">${fmt(o.qtl)}</td>
+        <td class="td num" style="color:var(--tx3)">—</td>
+        <td class="td num" style="color:var(--accent-lt)">${R_SYM}${fmt(o.amount, 0)}</td>
+        <td class="td"></td>
+      </tr>`;
+        }
+        html += `
+    <tr class="exp-row" id="exp-${i}">
+      <td class="exp-cell" colspan="14">
+        <div class="exp-inner">
+          <div class="exp-title">Payment History — Bill #${esc(o.bill_no || o.io_id)}</div>
+          <div id="pay-${i}"></div>
+        </div>
+      </td>
+    </tr>`;
+      });
+      tbody.innerHTML = html;
+      window._orders = orders;
+    }
+
+    function getCompactPayLine(o) {
+      const due = o.amount || 0;
+      const paid = o.paid || 0;
+      const bal = o.balance ?? due;
+      const entries = o.payments || [];
+
+      let paidText = '';
+      if (entries.length === 0) {
+        paidText = `Paid: <strong>${R_SYM}0</strong>`;
+      } else {
+        const parts = entries.map(e => `${R_SYM}${fmt(e.amount, 0)} on ${e.pay_date}`);
+        paidText = `Paid: <strong>${parts.join(', ')}</strong>`;
+      }
+
+      return `↳ <strong>Payments:</strong> Total Due: <strong>${R_SYM}${fmt(due, 0)}</strong> | ${paidText} | Outstanding: <strong style="color:#c93b2b; font-size:12.5px;">${R_SYM}${fmt(bal, 0)}</strong>.`;
+    }
+
+    function getPaymentsHtml(o) {
+      const entries = o.payments || [];
+      const adjustments = o.adjustments || [];
+      const amount_due = o.amount || 0;
+      const paid = o.paid || 0;
+      const bal = o.balance ?? amount_due;
+      const dsl = o.days_since_load;
+
+      if (!entries.length && !adjustments.length) {
+        return `<div class="no-pay">No payments or adjustments recorded for Bill #${esc(o.bill_no || o.io_id)}.</div>`;
+      }
+
+      const dayClass = d => { if (d === null || d === undefined) return ''; if (d <= 7) return 'fast'; if (d <= 30) return 'slow'; return 'late' };
+      const dayLabel = d => { if (d === null || d === undefined) return '—'; return d + ' days' };
+
+      const rows = entries.map((e, j) => `
+    <div class="pay-row">
+      <div class="pay-num">${j + 1}</div>
+      <div class="pay-date">${esc(e.pay_date || '—')}</div>
+      <div class="pay-party">${esc(e.dr_account || '—')}</div>
+      <div class="pay-cr" title="${esc(e.cr_account || '')}">${esc(e.cr_account || '—')}</div>
+      <div class="pay-amt">${R_SYM}${fmt(e.amount, 0)}</div>
+      <div class="pay-days ${dayClass(e.days_to_pay)}">${dayLabel(e.days_to_pay)}</div>
+    </div>`).join('');
+
+      const total_credit = adjustments.reduce((sum, adj) => sum + (adj.credit || 0), 0);
+      const total_debit = adjustments.reduce((sum, adj) => sum + (adj.debit || 0), 0);
+      const net_amount = amount_due - total_credit + total_debit;
+
+      let payListHtml = '';
+      if (entries.length > 0) {
+        payListHtml = `
+      <div class="pay-list">
+        <div style="display:grid;grid-template-columns:28px 90px 1fr 1fr 120px 80px;gap:12px;padding:0 14px 6px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3)">
+          <span></span><span>Pay Date</span><span>Dr Account</span><span>Cr Account</span><span style="text-align:right">Amount</span><span style="text-align:right">Days to Pay</span>
+        </div>
+        ${rows}
+      </div>`;
+      } else {
+        payListHtml = `<div class="no-pay">No direct journal payments recorded.</div>`;
+      }
+
+      let adjHtml = '';
+      if (adjustments.length > 0) {
+        const adjRows = adjustments.map((adj, j) => {
+          const val = adj.credit > 0 ? adj.credit : adj.debit;
+          const typeLabel = adj.credit > 0 ? 'Deduction' : 'Addition';
+          const typeColor = adj.credit > 0 ? 'var(--red)' : 'var(--green)';
+          const prefix = adj.credit > 0 ? '-' : '+';
+          return `
+        <div class="pay-row" style="background:rgba(201,100,66,0.04)">
+          <div class="pay-num" style="background:var(--sur2)">A${j + 1}</div>
+          <div class="pay-date">—</div>
+          <div class="pay-party" style="font-weight:500">${esc(adj.account)}</div>
+          <div class="pay-cr" style="color:${typeColor}">${typeLabel}</div>
+          <div class="pay-amt" style="color:var(--tx)">${prefix}${R_SYM}${fmt(val, 0)}</div>
+          <div class="pay-days">—</div>
+        </div>`;
+        }).join('');
+        adjHtml = `
+      <div style="margin-top:14px">
+        <div class="exp-title" style="margin-bottom:8px">Invoice Adjustments (Add/Less)</div>
+        <div class="pay-list">
+          ${adjRows}
+        </div>
+      </div>`;
+      }
+
+      let summaryItems = '';
+      if (adjustments.length > 0) {
+        summaryItems = `
+      <div class="ps-item"><div class="ps-lbl">Amount Due (Base)</div><div class="ps-val">${R_SYM}${fmt(amount_due, 0)}</div></div>
+      ${total_credit > 0 ? `<div class="ps-item"><div class="ps-lbl" style="color:var(--red)">Less Deductions</div><div class="ps-val" style="color:var(--red)">-${R_SYM}${fmt(total_credit, 0)}</div></div>` : ''}
+      ${total_debit > 0 ? `<div class="ps-item"><div class="ps-lbl" style="color:var(--green)">Add Additions</div><div class="ps-val" style="color:var(--green)">+${R_SYM}${fmt(total_debit, 0)}</div></div>` : ''}
+      <div class="ps-item"><div class="ps-lbl" style="font-weight:600">Net Amount Due</div><div class="ps-val" style="font-weight:700">${R_SYM}${fmt(net_amount, 0)}</div></div>
+      <div class="ps-item"><div class="ps-lbl">Total Paid</div><div class="ps-val" style="color:var(--green)">${R_SYM}${fmt(paid, 0)}</div></div>
+      <div class="ps-item"><div class="ps-lbl">Outstanding</div><div class="ps-val" style="color:${bal > 0 ? 'var(--yellow)' : 'var(--green)'}">${R_SYM}${fmt(bal, 0)}</div></div>
+    `;
+      } else {
+        summaryItems = `
+      <div class="ps-item"><div class="ps-lbl">Amount Due</div><div class="ps-val">${R_SYM}${fmt(amount_due, 0)}</div></div>
+      <div class="ps-item"><div class="ps-lbl">Total Paid</div><div class="ps-val" style="color:var(--green)">${R_SYM}${fmt(paid, 0)}</div></div>
+      <div class="ps-item"><div class="ps-lbl">Outstanding</div><div class="ps-val" style="color:${bal > 0 ? 'var(--yellow)' : 'var(--green)'}">${R_SYM}${fmt(bal, 0)}</div></div>
+    `;
+      }
+
+      return `
+    ${payListHtml}
+    ${adjHtml}
+    <div class="pay-summary">
+      ${summaryItems}
+      ${dsl !== null && dsl !== undefined ? `<div class="ps-item"><div class="ps-lbl">Days Since Loaded</div><div class="ps-val" style="color:${dsl > 30 ? 'var(--red)' : 'var(--tx)'}">${dsl} days</div></div>` : ''}
+    </div>`;
+    }
+
+    function toggleExpand(i) {
+      const row = document.getElementById('exp-' + i);
+      const chev = document.getElementById('chev-' + i);
+      const isOpen = row.classList.contains('open');
+      document.querySelectorAll('.exp-row.open').forEach(r => r.classList.remove('open'));
+      document.querySelectorAll('.chev.open').forEach(c => c.classList.remove('open'));
+      if (!isOpen) {
+        row.classList.add('open'); chev.classList.add('open');
+        const o = window._orders?.[i];
+        if (o) {
+          const container = document.getElementById('pay-' + i);
+          if (container) container.innerHTML = getPaymentsHtml(o);
+        }
+      }
+    }
+
+    function setPayFilter(val) {
+      payFilter = val;
+      document.querySelectorAll('#pay-seg .seg-btn').forEach(b => b.classList.remove('active', 'pending', 'unpaid', 'paid'));
+      const btn = document.getElementById('pseg-' + val);
+      if (btn) { btn.classList.add('active'); if (val !== 'all') btn.classList.add(val); }
+      applyF();
+    }
+
+    /* ═══════════════════════════════════════════════════════════ PURCHASES */
+    async function loadPurchases() {
+      purLoaded = true;
+      try {
+        const res = await fetch('/api/purchases');
+        const data = await res.json();
+        if (data.error) {
+          document.getElementById('pur-body').innerHTML = `<tr><td colspan="14" class="td"><div class="banner warn">⚠ ${esc(data.error)}</div></td></tr>`;
+          return;
+        }
+        allPurchases = data.orders || [];
+        const varSet = new Set();
+        allPurchases.forEach(o => (o.details || []).forEach(d => { if (d.variety) varSet.add(d.variety) }));
+        populateMs('pur-ms-variety', [...varSet].sort());
+        renderPurchases(purGetFiltered());
+        setTimeout(setPhHeight, 50);
+      } catch (e) {
+        document.getElementById('pur-body').innerHTML = `<tr><td colspan="14" class="td"><div class="banner warn">⚠ ${e.message}</div></td></tr>`;
+      }
+    }
+
+    function purGetFiltered() {
+      const ioid = document.getElementById('pur-f-ioid').value.toLowerCase();
+      const party = document.getElementById('pur-f-party').value.toLowerCase();
+      const broker = document.getElementById('pur-f-broker').value.toLowerCase();
+      const varieties = getMsVals('pur-ms-variety');
+      const dateFrom = inputToDate(document.getElementById('pur-f-from').value);
+      const dateTo = inputToDate(document.getElementById('pur-f-to').value);
+      let rows = allPurchases.filter(o => {
+        if (ioid && !String(o.io_id).toLowerCase().includes(ioid) && !String(o.bill_no || '').toLowerCase().includes(ioid)) return false;
+        if (party && !o.party.toLowerCase().includes(party)) return false;
+        if (broker && !o.broker.toLowerCase().includes(broker)) return false;
+        if (varieties.length) {
+          const detVars = (o.details || []).map(d => d.variety);
+          if (!varieties.some(v => detVars.includes(v))) return false;
+        }
+        if (purPayFilter === 'pending' && (o.balance ?? o.amount) <= 0) return false;
+        if (purPayFilter === 'unpaid' && (o.paid > 0 || (o.balance ?? o.amount) <= 0)) return false;
+        if (purPayFilter === 'paid' && (o.balance ?? o.amount) > 0) return false;
+        const d = parseDateStr(o.loaded_date);
+        if (dateFrom && d && d < dateFrom) return false;
+        if (dateTo && d && d > dateTo) return false;
+        return true;
+      });
+      if (purSort.col) {
+        rows = [...rows].sort((a, b) => {
+          let va = a[purSort.col] || '', vb = b[purSort.col] || '';
+          if (purSort.col === 'loaded_date') {
+            va = parseDateStr(va) || new Date(0); vb = parseDateStr(vb) || new Date(0);
+            return purSort.dir * (va - vb);
+          }
+          const na = Number(va), nb = Number(vb);
+          if (!isNaN(na) && !isNaN(nb)) return purSort.dir * (na - nb);
+          return purSort.dir * String(va).localeCompare(String(vb));
+        });
+      }
+      return rows;
+    }
+    function purApplyF() { renderPurchases(purGetFiltered()) }
+    function purResetF() {
+      document.getElementById('pur-f-ioid').value = '';
+      document.getElementById('pur-f-party').value = '';
+      document.getElementById('pur-f-broker').value = '';
+      document.getElementById('pur-f-from').value = '';
+      document.getElementById('pur-f-to').value = '';
+      ['pur-ms-variety'].forEach(id => {
+        document.getElementById(id + '-panel').querySelectorAll('input').forEach(c => c.checked = false);
+        msChange(id);
+      });
+      purSort = { col: 'loaded_date', dir: -1 };
+      purPayFilter = 'all';
+      document.querySelectorAll('#pur-pay-seg .seg-btn').forEach(b => b.classList.remove('active', 'pending', 'unpaid', 'paid'));
+      document.getElementById('pur-pseg-all')?.classList.add('active');
+      document.querySelectorAll('#page-purchases thead th').forEach(th => th.classList.remove('asc', 'desc'));
+      document.getElementById('pur-th-date')?.classList.add('desc');
+      renderPurchases(purGetFiltered());
+    }
+
+    function renderPurchases(orders) {
+      document.getElementById('pur-fcnt').textContent = `${orders.length} of ${allPurchases.length} purchases`;
+      const tbody = document.getElementById('pur-body');
+      if (!orders.length) { tbody.innerHTML = `<tr><td colspan="14" class="td"><div class="empty">No purchases match filters.</div></td></tr>`; return }
+      let html = '';
+      orders.forEach((o, i) => {
+        const details = o.details || [];
+        const isMulti = details.length > 1;
+        const uniq = field => [...new Set(details.map(d => String(d[field] ?? '')))]
+        const sameVal = field => uniq(field).length <= 1;
+        const varietyCell = (isMulti && !sameVal('variety')) ? '' : esc(o.variety);
+        const unitCell = (isMulti && !sameVal('unit')) ? '' : esc(details[0]?.unit || o.unit);
+        const rateCell = isMulti
+          ? (sameVal('rate') ? `${R_SYM}${fmt(details[0].rate, 0)}` : `<span style="font-size:11px;color:var(--tx3)">see ↓</span>`)
+          : `${R_SYM}${fmt(details[0]?.rate || 0, 0)}`;
+        // Order ID badge / Bill No
+        const displayId = o.bill_no || o.io_id;
+        const idBadge = isMulti
+          ? `${esc(displayId)}<sup title="${details.length} IO Detail rows" style="font-size:9px;color:var(--accent);margin-left:3px;font-family:var(--mono)">⊕${details.length}</sup>`
+          : esc(displayId);
+        const paid = o.paid || 0, bal = o.balance ?? o.amount;
+        let stCls, stTxt;
+        if (bal <= 0) { stCls = 'paid'; stTxt = 'Paid'; }
+        else if (paid > 0) { stCls = 'partial'; stTxt = 'Partial'; }
+        else { stCls = 'unpaid'; stTxt = 'Unpaid'; }
+        const statusBadge = `<span class="badge ${stCls}">${stTxt}</span>`;
+        html += `
+    <tr class="dr" onclick="purToggleExpand(${i})">
+      <td class="td" style="padding:0 6px 0 10px"><span class="chev" id="pur-chev-${i}">▶</span></td>
+      <td class="td num" style="font-weight:600;color:var(--accent-lt)">${idBadge}</td>
+      <td class="td col-broker" title="${esc(o.broker)}">${esc(o.broker)}</td>
+      <td class="td col-party" style="font-weight:500" title="${esc(o.party)}">${esc(o.party)}</td>
+      <td class="td num">${esc(o.loaded_date)}</td>
+      <td class="td" style="font-size:12px;color:var(--tx2)">${esc(o.type)}</td>
+      <td class="td col-mode" style="font-size:12px;color:var(--tx2)">${esc(o.mode)}</td>
+      <td class="td col-variety" title="${esc(varietyCell)}">${varietyCell}</td>
+      <td class="td num">${fmtN(o.bags)}</td>
+      <td class="td num">${unitCell}</td>
+      <td class="td num">${fmt(o.qtl)}</td>
+      <td class="td num">${rateCell}</td>
+      <td class="td num">${R_SYM}${fmt(o.amount, 0)}</td>
+      <td class="td">${statusBadge}</td>
+    </tr>`;
+        if (bal > 0) {
+          html += `
+    <tr class="print-pay-row">
+      <td class="td" style="padding:0"></td>
+      <td class="td" colspan="13" style="font-size:12.5px;color:#333;padding:6px 12px;background:#fcfbfa;border-bottom:1px solid #ddd;line-height:1.4;">
+        ${getCompactPayLine(o)}
+      </td>
+    </tr>`;
+        }
+        if (isMulti) {
+          details.forEach((d, di) => {
+            html += `
+        <tr class="det-row">
+          <td class="td" style="padding:0 6px 0 10px"><span class="det-num">${di + 1}</span></td>
+          <td class="td num" style="color:var(--tx3);font-size:11px">↳</td>
+          <td class="td" colspan="2" style="font-size:12px;color:var(--tx3)">Detail ${di + 1}</td>
+          <td class="td"></td><td class="td"></td><td class="td col-mode"></td>
+          <td class="td col-variety" style="font-weight:500" title="${esc(d.variety)}">${esc(d.variety)}</td>
+          <td class="td num">${fmtN(d.bags)}</td>
+          <td class="td num">${esc(d.unit)}</td>
+          <td class="td num">${fmt(d.qtl)}</td>
+          <td class="td num">${R_SYM}${fmt(d.rate, 0)}</td>
+          <td class="td num" style="color:var(--accent-lt)">${R_SYM}${fmt(d.amount, 0)}</td>
+          <td class="td"></td>
+        </tr>`;
+          });
+          html += `
+      <tr class="det-total">
+        <td class="td"></td>
+        <td class="td" colspan="5" style="font-size:12px;color:var(--tx2);padding-left:12px">Total — ${details.length} lines</td>
+        <td class="td col-mode"></td>
+        <td class="td"></td>
+        <td class="td num">${fmtN(o.bags)}</td>
+        <td class="td num">${esc(o.unit)}</td>
+        <td class="td num">${fmt(o.qtl)}</td>
+        <td class="td num" style="color:var(--tx3)">—</td>
+        <td class="td num" style="color:var(--accent-lt)">${R_SYM}${fmt(o.amount, 0)}</td>
+        <td class="td"></td>
+      </tr>`;
+        }
+        html += `
+    <tr class="exp-row" id="pur-exp-${i}">
+      <td class="exp-cell" colspan="14">
+        <div class="exp-inner">
+          <div class="exp-title">Payment History — Bill #${esc(o.bill_no || o.io_id)}</div>
+          <div id="pur-pay-${i}"></div>
+        </div>
+      </td>
+    </tr>`;
+      });
+      tbody.innerHTML = html;
+      window._purchases = orders;
+    }
+
+    function purToggleExpand(i) {
+      const row = document.getElementById('pur-exp-' + i);
+      const chev = document.getElementById('pur-chev-' + i);
+      const isOpen = row.classList.contains('open');
+      document.querySelectorAll('#page-purchases .exp-row.open').forEach(r => r.classList.remove('open'));
+      document.querySelectorAll('#page-purchases .chev.open').forEach(c => c.classList.remove('open'));
+      if (!isOpen) {
+        row.classList.add('open'); chev.classList.add('open');
+        const o = window._purchases?.[i];
+        if (o) {
+          const container = document.getElementById('pur-pay-' + i);
+          if (container) container.innerHTML = getPaymentsHtml(o);
+        }
+      }
+    }
+
+    function purSetPayFilter(val) {
+      purPayFilter = val;
+      document.querySelectorAll('#pur-pay-seg .seg-btn').forEach(b => b.classList.remove('active', 'pending', 'unpaid', 'paid'));
+      const btn = document.getElementById('pur-pseg-' + val);
+      if (btn) { btn.classList.add('active'); if (val !== 'all') btn.classList.add(val); }
+      purApplyF();
+    }
+
+    function purSortCol(col) {
+      if (purSort.col === col) purSort.dir *= -1;
+      else { purSort.col = col; purSort.dir = 1 }
+      document.querySelectorAll('#page-purchases thead th').forEach(th => th.classList.remove('asc', 'desc'));
+      const th = document.getElementById('pur-th-' + ((col === 'io_id' || col === 'bill_no') ? 'id' : 'date'));
+      if (th) th.classList.add(purSort.dir === 1 ? 'asc' : 'desc');
+      renderPurchases(purGetFiltered());
+    }
+
+    /* ═══════════════════════════════════════════════════════════ STOCKS — TRIAL BALANCE */
+    let allStkGroups = [], stkRaw = [];
+    async function loadStocks() {
+      stocksLoaded = true;
+      try {
+        const res = await fetch('/api/stocks/trial-balance');
+        if (!res.ok) throw new Error(res.statusText);
+        stkRaw = await res.json();
+        if (stkRaw.error) throw new Error(stkRaw.error);
+        allStkGroups = stkRaw;
+        stkApplyF();
+        document.getElementById('sync-time').textContent = nowStr();
+      } catch (e) {
+        document.getElementById('stk-body').innerHTML = `<tr><td colspan="5" class="td"><div class="empty">Error: ${esc(e.message)}</div></td></tr>`;
+      }
+    }
+    function stkApplyF() {
+      const from = inputToDate(document.getElementById('sf-from')?.value);
+      const to = inputToDate(document.getElementById('sf-to')?.value);
+      const mode = (document.getElementById('sf-mode')?.value || 'all');
+      const vrty = (document.getElementById('sf-variety')?.value || '').trim().toLowerCase();
+      // Filter each group's rows
+      let visGroups = 0;
+      const rows = [];
+      let gtBags = 0, gtQtls = 0, gtJama = 0, gtKharchu = 0;
+      allStkGroups.forEach(g => {
+        if (vrty && !g.variety.toLowerCase().includes(vrty)) return;
+        const subRows = g.rows.filter(r => {
+          if (mode !== 'all' && r.mode !== mode) return false;
+          if (from || to) {
+            const d = parseDateStr(r.min_date);
+            if (from && d && d < from) return false;
+            if (to && d && d > to) return false;
+          }
+          return true;
+        });
+        if (!subRows.length) return;
+        visGroups++;
+        const gBags = subRows.reduce((s, r) => s + r.bags, 0);
+        const gQtls = subRows.reduce((s, r) => s + r.qtls, 0);
+        const gJama = subRows.reduce((s, r) => s + r.jama, 0);
+        const gKharchu = subRows.reduce((s, r) => s + r.kharchu, 0);
+        gtBags += gBags; gtQtls += gQtls; gtJama += gJama; gtKharchu += gKharchu;
+        // Group header
+        rows.push(`<tr class="stk-grp-hdr"><td colspan="5">${esc(g.variety)}</td></tr>`);
+        // Sub-rows
+        subRows.forEach(r => {
+          rows.push(`<tr class="dr">
+        <td class="td stk-acc">${esc(r.account)}</td>
+        <td class="td num">${r.bags ? fmtN(Math.round(r.bags)) : ''}</td>
+        <td class="td num">${r.qtls ? fmt(r.qtls, 2) : ''}</td>
+        <td class="td num stk-jama">${r.jama ? fmt(r.jama, 0) : ''}</td>
+        <td class="td num stk-kharchu">${r.kharchu ? fmt(r.kharchu, 0) : ''}</td>
+      </tr>`);
+        });
+        // Group total
+        rows.push(`<tr class="stk-grp-tot">
+      <td class="td"></td>
+      <td class="td num">${fmtN(Math.round(gBags))}</td>
+      <td class="td num">${fmt(gQtls, 2)}</td>
+      <td class="td num stk-jama">${gJama ? fmt(gJama, 0) : '0.00'}</td>
+      <td class="td num stk-kharchu">${gKharchu ? fmt(gKharchu, 0) : '0.00'}</td>
+    </tr>`);
+      });
+      document.getElementById('sfcnt').textContent = `${visGroups} of ${allStkGroups.length} varieties`;
+      const tbody = document.getElementById('stk-body');
+      if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5" class="td"><div class="empty">No data matches filters.</div></td></tr>`; return; }
+      // Grand total
+      rows.push(`<tr class="stk-grand-tot">
+    <td class="td" style="font-weight:700">Grand Total</td>
+    <td class="td num" style="font-weight:700">${fmtN(Math.round(gtBags))}</td>
+    <td class="td num" style="font-weight:700">${fmt(gtQtls, 2)}</td>
+    <td class="td num stk-jama" style="font-weight:700">${CURR}${fmt(gtJama, 0)}</td>
+    <td class="td num stk-kharchu" style="font-weight:700">${CURR}${fmt(gtKharchu, 0)}</td>
+  </tr>`);
+      tbody.innerHTML = rows.join('');
+    }
+    function stkResetF() {
+      document.getElementById('sf-from').value = '';
+      document.getElementById('sf-to').value = '';
+      document.getElementById('sf-mode').value = 'all';
+      document.getElementById('sf-variety').value = '';
+      stkApplyF();
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════ STATS */
+    async function loadStats() {
+      if (!allOrders.length) {
+        const res = await fetch('/api/orders'), d = await res.json();
+        if (!d.error) allOrders = d.orders || [];
+      }
+      chartsInit = true;
+      const orders = allOrders;
+      const totalAmt = orders.reduce((s, o) => s + o.amount, 0);
+      const totalQtl = orders.reduce((s, o) => s + o.qtl, 0);
+      document.getElementById('stats-cards').innerHTML = `
+    <div class="card gd"><div class="card-lbl">Total Sales</div><div class="card-val">${fmtN(orders.length)}</div></div>
+    <div class="card"><div class="card-lbl">Total Quintals</div><div class="card-val">${fmt(totalQtl, 0)}</div></div>
+    <div class="card"><div class="card-lbl">Total Value</div><div class="card-val" style="font-size:17px">${CURR}${fmt(totalAmt / 100000, 1)}L</div></div>
+    <div class="card"><div class="card-lbl">Unique Parties</div><div class="card-val">${new Set(orders.map(o => o.party)).size}</div></div>`;
+      const ACCENT = '#c96442', TEXT2 = '#8a8078', GRID = '#ddd8ce';
+      Chart.defaults.color = TEXT2; Chart.defaults.borderColor = GRID; Chart.defaults.font.family = "'JetBrains Mono',monospace";
+      const base = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+      document.getElementById('stats-charts').innerHTML = `
+    <div class="cc"><div class="ct">Top Parties by Volume (Qtl)</div><div style="height:260px"><canvas id="ch-party"></canvas></div></div>
+    <div class="cc"><div class="ct">Rice Variety Distribution</div><div style="height:260px"><canvas id="ch-variety"></canvas></div></div>`;
+      const byParty = {}, byVariety = {};
+      orders.forEach(o => {
+        byParty[o.party] = (byParty[o.party] || 0) + o.qtl;
+        byVariety[o.variety] = (byVariety[o.variety] || 0) + o.qtl;
+      });
+      const topP = Object.entries(byParty).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      const topV = Object.entries(byVariety).sort((a, b) => b[1] - a[1]);
+      const mkBar = (id, labels, data, color, horiz) => new Chart(document.getElementById(id), {
+        type: 'bar', data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 4, borderWidth: 0 }] },
+        options: { ...base, indexAxis: horiz ? 'y' : 'x', scales: { x: { grid: { color: horiz ? GRID : 'transparent' }, ticks: { font: { size: 10 } } }, y: { grid: { color: horiz ? 'transparent' : GRID }, ticks: { font: { size: 10 } } } } }
+      });
+      mkBar('ch-party', topP.map(p => p[0]), topP.map(p => p[1]), '#7a9ec9', true);
+      mkBar('ch-variety', topV.map(v => v[0]), topV.map(v => v[1]), ACCENT, false);
+    }
+
+    /* ═══════════════════════════════════════════════════════════ DATA */
+    async function loadData() {
+      dataLoaded = true;
+      const res = await fetch('/api/db_info'), info = await res.json();
+      const container = document.getElementById('data-content');
+      if (info.status === 'not_installed') { container.innerHTML = `<div class="smsg"><h3 style="color:var(--yellow)">⚠ Run setup.bat then restart</h3></div>`; return }
+      if (info.status === 'file_not_found') { container.innerHTML = `<div class="smsg"><h3 style="color:var(--red)">⚠ .mdb not found</h3><p>Place <code>${esc(info.path || '')}</code> in the app folder.</p></div>`; return }
+      if (info.status === 'error') { container.innerHTML = `<div class="smsg"><h3 style="color:var(--red)">⚠ Error</h3><p><code>${esc(info.message || '')}</code></p></div>`; return }
+      const totalRows = info.tables.reduce((s, t) => s + (t.row_count || 0), 0);
+      const tc = t => { const tl = (t || '').toLowerCase(); if (tl.includes('int')) return '#6aaa7e'; if (tl.includes('float')) return '#d4956a'; if (tl.includes('date')) return '#9b8ec9'; return '#7a9ec9' };
+      container.innerHTML = `
+    <div class="db-hdr">
+      <div class="db-badge">File: <span>${esc(info.file)}</span></div>
+      <div class="db-badge">Tables: <span>${info.tables.length}</span></div>
+      <div class="db-badge">Total Rows: <span>${fmtN(totalRows)}</span></div>
+      <input class="db-srch" placeholder="🔍 Filter tables…" oninput="filterTables(this.value)"/>
+    </div>
+    <div class="tbl-cards">
+      ${info.tables.map((t, i) => `
+        <div class="tbl-card" id="tc-${i}" data-name="${esc(t.name.toLowerCase())}">
+          <div class="tbl-hdr" onclick="toggleTbl(${i},'${esc(t.name)}')">
+            <span>🗃</span>
+            <span class="tbl-nm">${esc(t.name)}</span>
+            <span class="tbl-cc">${t.columns.length} cols</span>
+            <span class="tbl-rc">${fmtN(t.row_count)} rows</span>
+            <span class="tbl-chv" id="tc-chv-${i}">▶</span>
+          </div>
+          <div class="tbl-body" id="tb-${i}">
+            <div class="qbar">
+              <span style="font-size:11px;color:var(--tx3)">Filter:</span>
+              <input class="qinp" id="qi-${i}" placeholder="search all columns…"/>
+              <span style="font-size:11px;color:var(--tx3)">Rows:</span>
+              <select class="qlim" id="ql-${i}"><option>30</option><option selected>100</option><option>500</option></select>
+              <button class="qbtn" onclick="runQuery(${i},'${esc(t.name)}')">▶ Run</button>
+            </div>
+            <div class="cpills">${t.columns.map(c => `<span class="cp"><span style="color:${tc(c.type)};font-size:9px;margin-right:2px">●</span>${esc(c.name)}</span>`).join('')}</div>
+            <div id="tg-${i}"><div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px">Click ▶ Run to load data</div></div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+      info.tables.forEach((t, i) => {
+        const inp = document.getElementById('qi-' + i);
+        if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') runQuery(i, t.name) });
+      });
+    }
+    function filterTables(val) {
+      document.querySelectorAll('.tbl-card[data-name]').forEach(c => {
+        c.style.display = c.dataset.name.includes(val.toLowerCase()) ? '' : 'none';
+      });
+    }
+    function toggleTbl(i, name) {
+      const body = document.getElementById('tb-' + i), chev = document.getElementById('tc-chv-' + i);
+      const isOpen = body.classList.contains('open');
+      document.querySelectorAll('.tbl-body.open').forEach(b => b.classList.remove('open'));
+      document.querySelectorAll('.tbl-chv.open').forEach(c => c.classList.remove('open'));
+      if (!isOpen) {
+        body.classList.add('open'); chev.classList.add('open');
+        const g = document.getElementById('tg-' + i);
+        if (g && g.textContent.includes('Run')) runQuery(i, name);
+      }
+    }
+    async function runQuery(i, name) {
+      const whereEl = document.getElementById('qi-' + i);
+      const limitEl = document.getElementById('ql-' + i);
+      const gridEl = document.getElementById('tg-' + i);
+      if (!gridEl) return;
+      const where = whereEl?.value || '', limit = parseInt(limitEl?.value || 100);
+      gridEl.innerHTML = '<div class="loading" style="padding:24px"><div class="spin"></div>Loading…</div>';
+      try {
+        const res = await fetch('/api/query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table: name, where, limit }) });
+        const data = await res.json();
+        if (data.error) { gridEl.innerHTML = `<div style="padding:12px;color:var(--red);font-family:var(--mono);font-size:12px">⚠ ${esc(data.error)}</div>`; return }
+        if (!data.rows?.length) { gridEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px">No rows found${where ? ' matching "' + esc(where) + '"' : ''}.</div>`; return }
+        const tc = t => { const tl = (t || '').toLowerCase(); if (tl.includes('int')) return '#2dc97a'; if (tl.includes('float')) return '#f0ae30'; if (tl.includes('date')) return '#a78bfa'; return '#4a8ff5' };
+        gridEl.innerHTML = `
+      <div class="dg-wrap"><table class="dg">
+        <thead><tr>${data.columns.map((c, ci) => `<th><span style="color:${tc(data.col_types[ci])};margin-right:4px;font-size:9px">●</span>${esc(c)}</th>`).join('')}</tr></thead>
+        <tbody>${data.rows.map(row => `<tr>${row.map(v => v === '' || v === null ? '<td class="null">—</td>' : `<td title="${esc(v)}">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <div class="dg-footer">Showing ${fmtN(data.shown)} of ${fmtN(data.total)} rows${data.total > data.shown ? ' · <span style="color:var(--yellow)">increase limit to see more</span>' : ''}</div>`;
+      } catch (e) { gridEl.innerHTML = `<div style="padding:12px;color:var(--red);font-family:var(--mono);font-size:12px">⚠ ${e.message}</div>` }
+    }
+
+    /* ═══════════════════════════════════════════════════════════ IO EXPLORER */
+    let ioData2 = null, selIOId = null;
+
+    async function loadExplore() {
+      exploreLoaded = true;
+      const c = document.getElementById('explore-content');
+      c.innerHTML = `
+    <div class="io-sbar">
+      <input class="io-inp" id="io-srch" placeholder="Search by party, date, bill no…" onkeydown="if(event.key==='Enter')doIOSearch()"/>
+      <button class="io-btn" onclick="doIOSearch()">🔍 Search IO</button>
+      <span style="font-size:12px;color:var(--tx3)" id="io-cnt"></span>
+    </div>
+    <div id="io-tbl"><div class="loading"><div class="spin"></div>Loading IO table…</div></div>
+    <div id="io-rel" style="margin-top:16px"></div>`;
+      await doIOSearch();
+    }
+    async function doIOSearch() {
+      const val = (document.getElementById('io-srch')?.value || '').trim();
+      selIOId = null;
+      const tbl = document.getElementById('io-tbl');
+      const rel = document.getElementById('io-rel');
+      if (tbl) tbl.innerHTML = '<div class="loading"><div class="spin"></div>Searching…</div>';
+      if (rel) rel.innerHTML = '';
+      try {
+        const res = await fetch('/api/io_explore?search=' + encodeURIComponent(val));
+        const data = await res.json();
+        if (data.error) { tbl.innerHTML = `<div class="smsg"><h3 style="color:var(--red)">⚠ ${esc(data.error)}</h3></div>`; return }
+        ioData2 = data;
+        const lk = data.lookups || {};
+        const cnt = document.getElementById('io-cnt');
+        if (cnt) cnt.textContent = `${fmtN(data.io.total)} bills · ${fmtN(lk.party_count || 0)} parties · ${fmtN(lk.broker_count || 0)} brokers`;
+        renderIOTbl(data);
+      } catch (e) { if (tbl) tbl.innerHTML = `<div class="smsg"><h3 style="color:var(--red)">⚠ ${e.message}</h3></div>` }
+    }
+    function renderIOTbl(data) {
+      const tbl = document.getElementById('io-tbl');
+      if (!tbl) return;
+      const io = data.io;
+      if (!io.rows?.length) { tbl.innerHTML = '<div class="no-match">No IO records found.</div>'; return }
+      const showC = Math.min(io.columns.length, 14);
+      tbl.innerHTML = `<div class="io-panel">
+    <div class="io-pt">IO Table — Bills <span>Click any row to see Details + Journal</span></div>
+    <div class="dg-wrap" style="max-height:320px"><table class="dg">
+      <thead><tr>${io.columns.slice(0, showC).map(c => `<th>${esc(c)}</th>`).join('')}${io.columns.length > showC ? `<th>+${io.columns.length - showC}</th>` : ''}</tr></thead>
+      <tbody>${io.rows.map((row, ri) => {
+        const rowId = row[io.id_col_idx];
+        return `<tr class="io-clk${rowId === selIOId ? ' sel-row' : ''}" onclick="selectIO('${esc(rowId)}',${ri})">
+          ${row.slice(0, showC).map(v => v === '' || v === null ? '<td class="null">—</td>' : `<td title="${esc(v)}">${esc(v)}</td>`).join('')}
+          ${io.columns.length > showC ? '<td class="null">…</td>' : ''}
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div class="dg-footer">${fmtN(io.total)} rows${io.total > 300 ? ' · showing first 300' : ''} · Click a row to load linked records</div>
+  </div>`;
+    }
+    function selectIO(io_id, ri) {
+      selIOId = io_id;
+      document.querySelectorAll('.io-clk').forEach((tr, i) => tr.classList.toggle('sel-row', i === ri));
+      fetchRelated2(io_id);
+    }
+    async function fetchRelated2(io_id) {
+      const wrap = document.getElementById('io-rel');
+      if (!wrap) return;
+      wrap.innerHTML = `<div class="loading" style="padding:24px"><div class="spin"></div>Loading related for IO #${esc(io_id)}…</div>`;
+      try {
+        const res = await fetch('/api/io_explore?io_id=' + encodeURIComponent(io_id));
+        const data = await res.json();
+        renderRelated2(data, io_id);
+      } catch (e) { wrap.innerHTML = `<div style="color:var(--red);padding:12px">⚠ ${e.message}</div>` }
+    }
+    function renderRelated2(data, io_id) {
+      const wrap = document.getElementById('io-rel'); if (!wrap) return;
+      const rel = data.related || {};
+      const tabs = Object.keys(rel);
+      const io = data.io || ioData2?.io;
+      let ioRow = null;
+      if (io) { const r = io.rows.find(row => row[io.id_col_idx] === io_id); if (r) ioRow = Object.fromEntries(io.columns.map((c, i) => [c, r[i]])) }
+      wrap.innerHTML = `<div class="io-panel">
+    <div class="io-pt">IO #${esc(io_id)} — Linked Records <span>${tabs.length} tables</span></div>
+    <div class="rtabs">
+      <div class="rtab active" onclick="swTab('merged')" id="rt-merged">🔗 Merged</div>
+      ${tabs.map(t => `<div class="rtab" onclick="swTab('${esc(t.replace(/ /g, '_'))}')" id="rt-${esc(t.replace(/ /g, '_'))}">${esc(t)} <span class="rtab-b">${rel[t].rows.length}</span></div>`).join('')}
+    </div>
+    <div class="rpanel active" id="rp-merged">
+      ${ioRow ? renderMerged2(ioRow, rel) : '<div class="no-match">IO header not loaded.</div>'}
+    </div>
+    ${tabs.map(t => {
+        const tb = rel[t]; return `<div class="rpanel" id="rp-${esc(t.replace(/ /g, '_'))}">
+      ${tb.rows.length === 0 ? `<div class="no-match">No rows in <strong>${esc(t)}</strong> via <em>${esc(tb.link_col)}</em></div>`
+            : `<div class="dg-wrap" style="max-height:280px"><table class="dg">
+        <thead><tr>${tb.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+        <tbody>${tb.rows.map(row => `<tr>${row.map(v => v === '' ? '<td class="null">—</td>' : `<td title="${esc(v)}">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <div class="dg-footer">Linked via <strong>${esc(tb.link_col)}</strong> · ${tb.rows.length} row(s)</div>`}
+    </div>`}).join('')}
+  </div>`;
+    }
+    function renderMerged2(ioRow, rel) {
+      const hdr = `<div class="mv-sec"><div class="mv-sec-t">🧾 Bill Header</div><div class="mkv">${Object.entries(ioRow).map(([k, v]) => `<div class="mkvi"><div class="mkv-k">${esc(k)}</div><div class="mkv-v">${esc(v || '—')}</div></div>`).join('')}</div></div>`;
+      const sect = (label, emoji, tname) => {
+        const t = rel[tname]; if (!t || !t.rows.length) return '';
+        return `<div class="mv-sec"><div class="mv-sec-t">${emoji} ${esc(tname)}</div>
+      <div class="dg-wrap"><table class="dg">
+        <thead><tr>${t.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+        <tbody>${t.rows.map(row => `<tr>${row.map(v => v === '' ? '<td class="null">—</td>' : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div></div>`;
+      };
+      return `<div class="mv">${hdr}${sect('IO Details', '📦', 'IO Details')}${sect('IO Other Details', '🚚', 'IO Other Details')}${sect('IO DC', '📋', 'IO DC')}${sect('IO Receipts', '💰', 'IO Receipts')}${sect('Accounts', '🏢', 'Accounts')}${sect('Brokers', '🤝', 'Brokers')}</div>`;
+    }
+    function swTab(name) {
+      document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.rpanel').forEach(p => p.classList.remove('active'));
+      document.getElementById('rt-' + name)?.classList.add('active');
+      document.getElementById('rp-' + name)?.classList.add('active');
+    }
+
+    /* INIT */
+    // Measure full top area (sticky title + filter bar) so table max-height is correct
+    function setPhHeight() {
+      const ph = document.querySelector('.ph-sticky');
+      const fbar = document.querySelector('#page-orders .fbar');
+      const phH = ph ? ph.offsetHeight : 0;
+      const fbH = fbar ? fbar.offsetHeight + 10 : 0;  // +10 for margin-bottom
+      document.documentElement.style.setProperty('--ph-h', phH + 'px');  // kept for thead sticky calc
+      document.documentElement.style.setProperty('--top-h', (phH + fbH) + 'px');
+    }
+    setPhHeight();
+    window.addEventListener('resize', setPhHeight);
+
+    /* INJECT HEADER LOGOS */
+    function injectHeaderLogos() {
+      const logoUrl = "/{{ industry_logo }}";
+      document.querySelectorAll('.ph').forEach(ph => {
+        if (!ph.querySelector('.ph-logo')) {
+          const logoImg = document.createElement('img');
+          logoImg.src = logoUrl;
+          logoImg.className = 'ph-logo';
+          logoImg.alt = 'Logo';
+          logoImg.style.cssText = 'width:var(--logo-sz-hdr); height:var(--logo-sz-hdr); border-radius:50%; object-fit:contain; mix-blend-mode:multiply; opacity:0.85; flex-shrink:0; margin-left:auto; align-self:center;';
+          ph.appendChild(logoImg);
+        }
+      });
+    }
+    injectHeaderLogos();
+
+    /* DATABASE STATUS CHECK */
+    async function checkDatabaseStatus() {
+      try {
+        const res = await fetch('/api/database-status');
+        const data = await res.json();
+        const overlay = document.getElementById('db-error-overlay');
+        const dbTxt = document.getElementById('txt-db-name');
+
+        if (data.exists) {
+          if (overlay) overlay.style.display = 'none';
+          if (dbTxt) {
+            dbTxt.textContent = data.filename;
+            dbTxt.title = data.path;
+          }
+          const sub = document.getElementById('db-filename-sub');
+          if (sub) sub.textContent = `All tables in ${data.filename}`;
+          loadOrders();
+        } else {
+          if (overlay) overlay.style.display = 'flex';
+          if (dbTxt) {
+            dbTxt.textContent = 'No DB Selected';
+          }
+        }
+      } catch (e) {
+        console.error('Failed to check database status:', e);
+      }
+    }
+
+    async function changeDatabase() {
+      const overlay = document.getElementById('db-error-overlay');
+      const dbTxt = document.getElementById('txt-db-name');
+
+      // Show loading indicator in overlay if visible
+      let btnOverlay = null;
+      let oldBtnHtml = '';
+      if (overlay && overlay.style.display !== 'none') {
+        btnOverlay = overlay.querySelector('button');
+        if (btnOverlay) {
+          oldBtnHtml = btnOverlay.innerHTML;
+          btnOverlay.disabled = true;
+          btnOverlay.innerHTML = '<span class="spin" style="width:14px; height:14px; margin:0 5px 0 0; display:inline-block; vertical-align:middle;"></span>Selecting…';
+        }
+      }
+
+      if (dbTxt) {
+        dbTxt.textContent = 'Selecting…';
+      }
+
+      try {
+        const res = await fetch('/api/select-database', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          window.location.reload();
+        } else {
+          checkDatabaseStatus();
+        }
+      } catch (e) {
+        alert('Error selecting database: ' + e.message);
+        checkDatabaseStatus();
+      } finally {
+        if (btnOverlay) {
+          btnOverlay.disabled = false;
+          btnOverlay.innerHTML = oldBtnHtml;
+        }
+      }
+    }
+
+    checkDatabaseStatus();
+
+    /* ═══════════════════════════════════════════════════════════ JOURNAL */
+    let allJournal = [], jSort_ = { col: 'date', dir: -1 };
+
+    async function loadJournal() {
+      jnlLoaded = true;
+      try {
+        const res = await fetch('/api/journal');
+        if (!res.ok) throw new Error(res.statusText);
+        allJournal = await res.json();
+        jApplyF();
+        document.getElementById('sync-time').textContent = nowStr();
+      } catch (e) {
+        document.getElementById('jnl-body').innerHTML = `<tr><td colspan="7" class="td"><div class="empty">Error: ${esc(e.message)}</div></td></tr>`;
+      }
+    }
+
+    function jGetFiltered() {
+      const dr = (document.getElementById('jf-dr')?.value || '').trim().toLowerCase();
+      const cr = (document.getElementById('jf-cr')?.value || '').trim().toLowerCase();
+      const from = inputToDate(document.getElementById('jf-from')?.value);
+      const to = inputToDate(document.getElementById('jf-to')?.value);
+      let rows = allJournal.filter(r => {
+        if (dr && !r.dr_account.toLowerCase().includes(dr)) return false;
+        if (cr && !r.cr_account.toLowerCase().includes(cr)) return false;
+        if (from || to) {
+          const d = parseDateStr(r.raw_date);
+          if (from && d && d < from) return false;
+          if (to && d && d > to) return false;
+        }
+        return true;
+      });
+      // Sort
+      const { col, dir } = jSort_;
+      rows.sort((a, b) => {
+        let av = a[col], bv = b[col];
+        if (col === 'date') { av = a.raw_date || ''; bv = b.raw_date || ''; }
+        if (col === 'amount' || col === 'journal_id') { av = +av; bv = +bv; }
+        if (av < bv) return -dir; if (av > bv) return dir; return 0;
+      });
+      return rows;
+    }
+
+    function jApplyF() { renderJournal(jGetFiltered()) }
+    function jResetF() {
+      document.getElementById('jf-dr').value = '';
+      document.getElementById('jf-cr').value = '';
+      document.getElementById('jf-from').value = '';
+      document.getElementById('jf-to').value = '';
+      jSort_ = { col: 'date', dir: -1 };
+      document.querySelectorAll('[id^="jth-"]').forEach(th => th.classList.remove('asc', 'desc'));
+      document.getElementById('jth-date')?.classList.add('desc');
+      renderJournal(jGetFiltered());
+    }
+    function jSort(col) {
+      if (jSort_.col === col) jSort_.dir *= -1;
+      else { jSort_.col = col; jSort_.dir = 1; }
+      document.querySelectorAll('[id^="jth-"]').forEach(th => th.classList.remove('asc', 'desc'));
+      const thMap = { journal_id: 'jth-id', date: 'jth-date' };
+      const th = document.getElementById(thMap[col]);
+      if (th) th.classList.add(jSort_.dir === 1 ? 'asc' : 'desc');
+      jApplyF();
+    }
+    function renderJournal(rows) {
+      document.getElementById('jfcnt').textContent = `${rows.length} of ${allJournal.length} entries`;
+      const tbody = document.getElementById('jnl-body');
+      if (!rows.length) { tbody.innerHTML = `<tr><td colspan="7" class="td"><div class="empty">No entries match filters.</div></td></tr>`; return; }
+      tbody.innerHTML = rows.map(r => `
+  <tr class="dr">
+    <td class="td num" style="color:var(--accent-lt);font-weight:600">${esc(r.journal_id)}</td>
+    <td class="td num">${esc(r.date)}</td>
+    <td class="td">${esc(r.dr_account)}</td>
+    <td class="td num" style="font-weight:600;color:var(--green)">${CURR}${fmt(r.amount, 0)}</td>
+    <td class="td">${esc(r.cr_account)}</td>
+    <td class="td" style="font-size:12px;color:var(--tx2);max-width:220px">${esc(r.details)}</td>
+    <td class="td" style="font-size:12px;color:var(--tx3)">${esc(r.type)}</td>
+  </tr>`).join('');
+    }
+
+    function exportToExcel(tableSelector, filename) {
+      try {
+        const table = document.querySelector(tableSelector);
+        if (!table) {
+          alert('Table not found.');
+          return;
+        }
+
+        let csv = [];
+        const rows = table.querySelectorAll('tr');
+
+        rows.forEach(row => {
+          if (row.style.display === 'none' || window.getComputedStyle(row).display === 'none') {
+            return;
+          }
+
+          const cols = row.querySelectorAll('th, td');
+          const rowData = [];
+
+          cols.forEach(col => {
+            if (col.classList.contains('col-mode') || col.style.display === 'none' || window.getComputedStyle(col).display === 'none') {
+              return;
+            }
+
+            let text = col.innerText || col.textContent || '';
+            text = text.replace(/₹/g, '').replace(/\u20b9/g, '').replace(/Rs\./g, '');
+            text = text.replace(/\s+/g, ' ').trim();
+            text = text.replace(/"/g, '""');
+
+            rowData.push('"' + text + '"');
+          });
+
+          if (rowData.length > 0) {
+            csv.push(rowData.join(','));
+          }
+        });
+
+        if (csv.length === 0) {
+          alert('No data to export.');
+          return;
+        }
+
+        const csvString = csv.join('\r\n');
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvString], { type: 'text/csv;charset=utf-8;' });
+
+        if (navigator.msSaveBlob) {
+          navigator.msSaveBlob(blob, filename + '.csv');
+        } else {
+          const link = document.createElement('a');
+          if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename + '.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          } else {
+            window.open('data:text/csv;charset=utf-8,' + encodeURIComponent(BOM + csvString));
+          }
+        }
+      } catch (e) {
+        alert('Export failed: ' + e.message);
+      }
+    }
+
+    async function closeDashboard() {
+      if (confirm("Are you sure you want to close the dashboard?")) {
+        try {
+          fetch('/api/shutdown', { method: 'POST' });
+          setTimeout(() => {
+            window.close();
+            document.body.innerHTML = `
+              <div style="background:#0f172a; color:#f8fafc; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; box-sizing:border-box;">
+                <div style="background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.08); padding:40px; border-radius:24px; max-width:420px; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+                  <div style="width:56px; height:56px; background:rgba(239,68,68,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 24px; color:#ef4444;">
+                    <svg viewBox="0 0 24 24" style="width:28px; height:28px; fill:currentColor;">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                    </svg>
+                  </div>
+                  <h1 style="font-size:20px; font-weight:600; margin-bottom:10px; letter-spacing:-0.025em;">Dashboard Closed</h1>
+                  <p style="font-size:14px; color:#94a3b8; line-height:1.6;">The dashboard server has been stopped. You can now close this tab.</p>
+                </div>
+              </div>
+            `;
+          }, 200);
+        } catch (e) {
+          console.error("Error shutting down server:", e);
+        }
+      }
+    }
+  </script>
+</body>
+
+</html>

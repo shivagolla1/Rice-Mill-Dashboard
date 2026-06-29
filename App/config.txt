@@ -1,0 +1,33 @@
+# Rice Mill Dashboard — Client Configuration
+# ─────────────────────────────────────────────────────────────────
+# Edit this file in Notepad before deploying to a new client.
+# Do NOT change the KEY names — only change the values after '='.
+# ─────────────────────────────────────────────────────────────────
+
+# ── INDUSTRY / COMPANY DETAILS ───────────────────────────────────
+
+# Full legal name of the company (used in header, PDF, browser tab)
+INDUSTRY_NAME = Sapthagiri Rice Industries
+
+# Short address line (shown on printed PDF reports)
+INDUSTRY_ADDRESS = Miryalaguda
+
+
+# Currency symbol: Rs. or ₹ or USD etc.  (default: Rs.)
+CURRENCY_SYMBOL = ₹
+
+# Browser tab title (leave blank to auto-use INDUSTRY_NAME)
+APP_TITLE =
+
+# ── LOGO ─────────────────────────────────────────────────────────
+
+# Path to the logo image file (relative to the sgri/ folder or absolute)
+INDUSTRY_LOGO = static/logo.jpg
+
+# ── DATABASE ─────────────────────────────────────────────────────
+
+# Full path to the .mdb file for this client.
+# If left blank the app auto-detects any .mdb in the data/ folder.
+MDB_FILE=D:\SGRI\SGRI 2025-2026.mdb
+
+
