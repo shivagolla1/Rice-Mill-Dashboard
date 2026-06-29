@@ -2352,6 +2352,7 @@
   <script>
     const CURR = "";
     const R_SYM = CURR;
+    window.DASHBOARD_VERSION = "1.0.0";
     /* ═══════════════════════════════════════════════════════════ CORE */
     const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const fmt = (n, d = 2) => Number(n).toLocaleString('en-IN', { maximumFractionDigits: d, minimumFractionDigits: d });
@@ -3575,6 +3576,131 @@
         }
       }
     }
+
+    /* ─── UPDATE UPDATER & RESTART SYSTEM ─── */
+    function checkUpdatesOnStartup() {
+      setTimeout(() => {
+        fetch('/api/update/check')
+          .then(res => res.json())
+          .then(data => {
+            if (data.update_available) {
+              showUpdateButtons(data.latest_version, data.backend_changed);
+            }
+          })
+          .catch(err => console.warn("Background update check failed:", err));
+      }, 2000);
+    }
+
+    function showUpdateButtons(latestVersion, needsBackendRestart) {
+      const actionContainers = document.querySelectorAll('.col-mode');
+      actionContainers.forEach(container => {
+        if (container.querySelector('.btn-update-available')) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'btn-print btn-update-available';
+        btn.style.background = 'var(--accent)';
+        btn.style.borderColor = 'var(--accent)';
+        btn.style.color = '#fff';
+        btn.style.fontWeight = '600';
+        
+        btn.innerHTML = `
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:4px;vertical-align:middle;">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          </svg>
+          <span style="vertical-align:middle;">${needsBackendRestart ? 'Restart to Update' : 'Click to Update'}</span>
+        `;
+        
+        btn.onclick = () => triggerUpdateFlow(latestVersion, needsBackendRestart, btn);
+        container.insertBefore(btn, container.firstChild);
+      });
+    }
+
+    function triggerUpdateFlow(latestVersion, needsBackendRestart, btnElement) {
+      const updateButtons = document.querySelectorAll('.btn-update-available');
+      updateButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.innerHTML = `
+          <span class="spin" style="width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:6px;animation:spin .8s linear infinite;"></span>
+          <span style="vertical-align:middle;">Updating...</span>
+        `;
+      });
+      
+      fetch('/api/update/apply', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            if (needsBackendRestart) {
+              fetch('/api/update/restart', { method: 'POST' })
+                .then(() => showReconnectingOverlay())
+                .catch(() => showReconnectingOverlay());
+            } else {
+              alert('Update successful! Reloading page...');
+              window.location.reload();
+            }
+          } else {
+            alert('Update failed: ' + (data.message || 'Unknown error'));
+            window.location.reload();
+          }
+        })
+        .catch(err => {
+          alert('Update failed: ' + err);
+          window.location.reload();
+        });
+    }
+
+    function showReconnectingOverlay() {
+      const overlay = document.createElement('div');
+      overlay.id = 'reconnect-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--bg);
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font);
+        color: var(--tx);
+      `;
+      overlay.innerHTML = `
+        <div style="font-size: 22px; font-weight: 600; margin-bottom: 12px; color: var(--accent-lt);">Restarting Dashboard...</div>
+        <div style="font-size: 14px; color: var(--tx2); margin-bottom: 24px; text-align: center; max-width: 400px; padding: 0 20px; line-height: 1.5;">
+          Applying backend updates and reconnecting to the server. Please wait.
+        </div>
+        <div class="spin" style="width: 28px; height: 28px; border: 3px solid var(--bdr2); border-top-color: var(--accent); border-radius: 50%;"></div>
+      `;
+      document.body.appendChild(overlay);
+      
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        fetch('/')
+          .then(res => {
+            if (res.status === 200) {
+              clearInterval(interval);
+              window.location.reload();
+            }
+          })
+          .catch(() => {
+            if (attempts > 30) {
+              overlay.innerHTML = `
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px; color: var(--red);">Server took too long to respond</div>
+                <div style="font-size: 14px; color: var(--tx2); text-align: center; max-width: 400px; padding: 0 20px; line-height: 1.5;">
+                  Please manually close the Command Prompt window and double-click <strong>start.bat</strong> to run the updated dashboard.
+                </div>
+              `;
+              clearInterval(interval);
+            }
+          });
+      }, 1000);
+    }
+
+    // Call checkUpdatesOnStartup on page load
+    checkUpdatesOnStartup();
   </script>
 </body>
 

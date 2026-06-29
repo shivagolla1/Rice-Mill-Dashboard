@@ -10,6 +10,7 @@ from datetime import datetime, date as dobj
 
 app  = Flask(__name__, template_folder='templates', static_folder='static')
 BASE = os.path.dirname(os.path.abspath(__file__))
+VERSION = "1.0.0"
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 def load_config():
@@ -1120,6 +1121,80 @@ def index():
         industry_logo=CFG.get('INDUSTRY_LOGO', 'static/logo.jpg'),
         network_url=network_url
     )
+
+@app.route('/api/update/check')
+def update_check():
+    import urllib.request, re
+    try:
+        # Check remote app.py version
+        url_app = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/app.py"
+        req_app = urllib.request.Request(url_app, headers={'User-Agent': 'Mozilla/5.0'})
+        remote_app_version = VERSION
+        with urllib.request.urlopen(req_app, timeout=5) as r:
+            chunk = r.read(2000).decode('utf-8')
+            match = re.search(r'VERSION\s*=\s*["\']([^"\']+)["\']', chunk)
+            if match:
+                remote_app_version = match.group(1)
+                
+        # Check remote index.html version
+        url_html = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/templates/index.html"
+        req_html = urllib.request.Request(url_html, headers={'User-Agent': 'Mozilla/5.0'})
+        remote_html_version = VERSION
+        with urllib.request.urlopen(req_html, timeout=5) as r:
+            chunk = r.read(2000).decode('utf-8')
+            match = re.search(r'DASHBOARD_VERSION\s*=\s*["\']([^"\']+)["\']', chunk)
+            if match:
+                remote_html_version = match.group(1)
+        
+        backend_changed = (remote_app_version != VERSION)
+        frontend_changed = (remote_html_version != VERSION)
+        
+        return jsonify({
+            'update_available': backend_changed or frontend_changed,
+            'backend_changed': backend_changed,
+            'frontend_changed': frontend_changed,
+            'latest_version': remote_app_version if backend_changed else remote_html_version
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/update/apply', methods=['POST'])
+def update_apply():
+    import urllib.request
+    try:
+        html_url = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/templates/index.html"
+        app_url = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/app.py"
+        
+        # Download files
+        req_h = urllib.request.Request(html_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req_h, timeout=10) as r:
+            html_data = r.read()
+            
+        req_a = urllib.request.Request(app_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req_a, timeout=10) as r:
+            app_data = r.read()
+            
+        # Overwrite local files
+        with open(os.path.join(BASE, 'templates', 'index.html'), 'wb') as f:
+            f.write(html_data)
+        with open(os.path.join(BASE, 'app.py'), 'wb') as f:
+            f.write(app_data)
+            
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/api/update/restart', methods=['POST'])
+def update_restart():
+    import subprocess, sys, time, threading
+    def self_restart():
+        time.sleep(0.5)
+        # Windows ping command to sleep 1 second, then run python app.py
+        cmd = f'ping 127.0.0.1 -n 2 > nul && "{sys.executable}" "{sys.argv[0]}"'
+        subprocess.Popen(cmd, shell=True)
+        os._exit(0)
+    threading.Thread(target=self_restart).start()
+    return jsonify({'status': 'ok'})
 
 if __name__ == '__main__':
     import socket
