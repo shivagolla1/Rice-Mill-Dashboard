@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <script>window.DASHBOARD_VERSION = "1.0.2";</script>
+  <script>window.DASHBOARD_VERSION = "1.0.4";</script>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{{ industry_name }} — Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1847,6 +1847,7 @@
     style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(250,247,242,0.98); z-index:9999; align-items:center; justify-content:center; padding:20px; font-family:'Inter',sans-serif;">
     <div
       style="background:var(--sur); border:1px solid var(--bdr); border-radius:12px; padding:40px; max-width:500px; text-align:center; box-shadow:0 12px 36px rgba(0,0,0,0.08);">
+      <div style="font-size:48px; margin-bottom:20px;">💾</div>
       <h2 style="font-size:20px; font-weight:600; margin-bottom:12px; color:var(--tx);">No Database File Selected</h2>
       <p style="font-size:14px; color:var(--tx2); margin-bottom:24px; line-height:1.6;">
         Please select the {{ industry_name }} Access Database (.mdb) file from your secure USB pendrive to view the
@@ -1855,7 +1856,7 @@
       <button onclick="changeDatabase()"
         style="background:var(--accent); color:#fff; border:none; padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; cursor:pointer; transition:background 0.2s; display:inline-flex; align-items:center; gap:8px;"
         onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='var(--accent)'">
-        Select Database File
+        📁 Select Database File
       </button>
     </div>
   </div>
@@ -1978,7 +1979,7 @@
         <div class="screen-header-title">
           <div class="pt">Sales</div>
         </div>
-        <div style="display:flex;gap:8px" class="col-mode">
+        <div style="display:flex;gap:8px" class="col-mode hdr-actions">
           <button class="btn-print" onclick="window.print()">
             <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
               <path
@@ -2075,7 +2076,7 @@
         <div class="screen-header-title">
           <div class="pt">Purchases</div>
         </div>
-        <div style="display:flex;gap:8px" class="col-mode">
+        <div style="display:flex;gap:8px" class="col-mode hdr-actions">
           <button class="btn-print" onclick="window.print()">
             <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
               <path
@@ -2171,7 +2172,7 @@
         <div class="screen-header-title">
           <div class="pt">Stocks</div>
         </div>
-        <div style="display:flex;gap:8px" class="col-mode">
+        <div style="display:flex;gap:8px" class="col-mode hdr-actions">
           <button class="btn-print" onclick="window.print()">
             <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
               <path
@@ -2292,7 +2293,7 @@
         <div class="screen-header-title">
           <div class="pt">Journal</div>
         </div>
-        <div style="display:flex;gap:8px" class="col-mode">
+        <div style="display:flex;gap:8px" class="col-mode hdr-actions">
           <button class="btn-print" onclick="window.print()">
             <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;">
               <path
@@ -3578,20 +3579,32 @@
 
     /* ─── UPDATE UPDATER & RESTART SYSTEM ─── */
     function checkUpdatesOnStartup() {
-      setTimeout(() => {
-        fetch('/api/update/check')
-          .then(res => res.json())
-          .then(data => {
-            if (data.update_available) {
-              showUpdateButtons(data.latest_version, data.backend_changed);
-            }
-          })
-          .catch(err => console.warn("Background update check failed:", err));
-      }, 2000);
+      fetch('/api/database-status')
+        .then(res => res.json())
+        .then(data => {
+          if (data.exists && data.cache_ready) {
+            // Database is loaded and cache is ready! Check updates.
+            fetch('/api/update/check')
+              .then(res => res.json())
+              .then(updateData => {
+                if (updateData.update_available) {
+                  showUpdateButtons(updateData.latest_version, updateData.backend_changed);
+                }
+              })
+              .catch(err => console.warn("Background update check failed:", err));
+          } else if (data.exists) {
+            // Database exists but cache is warming up. Check again in 1 second.
+            setTimeout(checkUpdatesOnStartup, 1000);
+          }
+        })
+        .catch(err => {
+          console.warn("DB status check failed, retrying in 2 seconds:", err);
+          setTimeout(checkUpdatesOnStartup, 2000);
+        });
     }
 
     function showUpdateButtons(latestVersion, needsBackendRestart) {
-      const actionContainers = document.querySelectorAll('.col-mode');
+      const actionContainers = document.querySelectorAll('.hdr-actions');
       actionContainers.forEach(container => {
         if (container.querySelector('.btn-update-available')) return;
 

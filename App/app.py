@@ -10,7 +10,7 @@ from datetime import datetime, date as dobj
 
 app  = Flask(__name__, template_folder='templates', static_folder='static')
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "1.0.2"
+VERSION = "1.0.4"
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 def load_config():
@@ -882,7 +882,8 @@ def api_database_status():
     return jsonify({
         'path': MDB_PATH or '',
         'filename': os.path.basename(MDB_PATH) if (MDB_PATH and exists) else '',
-        'exists': exists
+        'exists': exists,
+        'cache_ready': _db_cache_ready.is_set()
     })
 
 def ctypes_select_file():
@@ -1115,29 +1116,37 @@ def index():
         network_url=network_url
     )
 
+def download_url(url, timeout=10):
+    import urllib.request
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read()
+    except Exception:
+        import ssl
+        ctx = ssl._create_unverified_context()
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+            return r.read()
+
 @app.route('/api/update/check')
 def update_check():
-    import urllib.request, re
+    import re
     try:
         # Check remote app.py version
         url_app = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/app.py"
-        req_app = urllib.request.Request(url_app, headers={'User-Agent': 'Mozilla/5.0'})
         remote_app_version = VERSION
-        with urllib.request.urlopen(req_app, timeout=5) as r:
-            chunk = r.read(2000).decode('utf-8')
-            match = re.search(r'VERSION\s*=\s*["\']([^"\']+)["\']', chunk)
-            if match:
-                remote_app_version = match.group(1)
+        chunk = download_url(url_app, timeout=5).decode('utf-8')
+        match = re.search(r'VERSION\s*=\s*["\']([^"\']+)["\']', chunk)
+        if match:
+            remote_app_version = match.group(1)
                 
         # Check remote index.html version
         url_html = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/templates/index.html"
-        req_html = urllib.request.Request(url_html, headers={'User-Agent': 'Mozilla/5.0'})
         remote_html_version = VERSION
-        with urllib.request.urlopen(req_html, timeout=5) as r:
-            chunk = r.read(2000).decode('utf-8')
-            match = re.search(r'DASHBOARD_VERSION\s*=\s*["\']([^"\']+)["\']', chunk)
-            if match:
-                remote_html_version = match.group(1)
+        chunk = download_url(url_html, timeout=5).decode('utf-8')
+        match = re.search(r'DASHBOARD_VERSION\s*=\s*["\']([^"\']+)["\']', chunk)
+        if match:
+            remote_html_version = match.group(1)
         
         backend_changed = (remote_app_version != VERSION)
         frontend_changed = (remote_html_version != VERSION)
@@ -1153,20 +1162,14 @@ def update_check():
 
 @app.route('/api/update/apply', methods=['POST'])
 def update_apply():
-    import urllib.request
     try:
         html_url = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/templates/index.html"
         app_url = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/app.py"
         
         # Download files
-        req_h = urllib.request.Request(html_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req_h, timeout=10) as r:
-            html_data = r.read()
-            
-        req_a = urllib.request.Request(app_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req_a, timeout=10) as r:
-            app_data = r.read()
-            
+        html_data = download_url(html_url, timeout=10)
+        app_data = download_url(app_url, timeout=10)
+        
         # Overwrite local files
         with open(os.path.join(BASE, 'templates', 'index.html'), 'wb') as f:
             f.write(html_data)
