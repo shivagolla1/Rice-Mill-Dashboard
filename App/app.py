@@ -10,7 +10,7 @@ from datetime import datetime, date as dobj
 
 app  = Flask(__name__, template_folder='templates', static_folder='static')
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 def load_config():
