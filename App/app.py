@@ -10,7 +10,7 @@ from datetime import datetime, date as dobj
 
 app  = Flask(__name__, template_folder='templates', static_folder='static')
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 def load_config():
@@ -1097,20 +1097,13 @@ def index():
         return redirect(url_for('setup'))
     name = CFG.get('INDUSTRY_NAME', 'Rice Mill')
     
-    # Get local network IP for sidebar information
+    # Get computer name for stable network access URL
     import socket
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 80))
-        lip = s.getsockname()[0]
-        s.close()
+        hostname = socket.gethostname()
+        network_url = f"http://{hostname}:5000"
     except:
-        try:
-            lip = socket.gethostbyname(socket.gethostname())
-        except:
-            lip = '127.0.0.1'
-            
-    network_url = f"http://{lip}:5000" if lip != '127.0.0.1' else None
+        network_url = None
 
     return render_template(
         'index.html',
@@ -1199,11 +1192,13 @@ def update_restart():
 if __name__ == '__main__':
     import socket
     try:
-        s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(('8.8.8.8',80))
-        lip=s.getsockname()[0]; s.close()
-    except: lip='127.0.0.1'
+        hostname = socket.gethostname()
+        net_url = f"http://{hostname}:5000"
+    except:
+        net_url = None
     print(f'\n  *  Rice Mill Dashboard  ->  http://localhost:5000')
-    print(f'  *  On your network     ->  http://{lip}:5000\n')
+    if net_url:
+        print(f'  *  On your network     ->  {net_url}\n')
     if os.path.exists(MDB_PATH):
         print(f'  [OK]  Database: {os.path.basename(MDB_PATH)}')
     else:
