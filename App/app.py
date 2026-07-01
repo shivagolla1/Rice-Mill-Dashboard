@@ -10,7 +10,7 @@ from datetime import datetime, date as dobj
 
 app  = Flask(__name__, template_folder='templates', static_folder='static')
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "1.0.4"
+VERSION = "1.1.0"
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 def load_config():
@@ -20,7 +20,8 @@ def load_config():
         'INDUSTRY_ADDRESS': '',
         'CURRENCY_SYMBOL': 'Rs.',
         'APP_TITLE': '',
-        'INDUSTRY_LOGO': 'static/logo.jpg'
+        'INDUSTRY_LOGO': 'static/logo.jpg',
+        'ENABLE_UPDATES': 'False'
     }
     p = os.path.join(BASE,'config.txt')
     if not os.path.exists(p): return d
@@ -272,7 +273,7 @@ def read_table(tname):
 
 def _warmup():
     """Pre-parse the most-used tables in the background so first page load is fast."""
-    key_tables = ['IO', 'IO Details', 'Confirmation', 'Journal', 'IO DC']
+    key_tables = ['IO', 'IO Details', 'Confirmation', 'Journal', 'IO DC', 'IO Other Details']
     print('  [Warmup]  Warming up database cache...', flush=True)
     for t in key_tables:
         try:
@@ -297,6 +298,7 @@ def get_transactions(mode_filter):
         io_cols,  _, io_rows   = get_cached_table('IO')
         det_cols, _, det_rows  = get_cached_table('IO Details')
         con_cols, _, con_rows  = get_cached_table('Confirmation')
+        oth_cols, _, oth_rows  = get_cached_table('IO Other Details')
 
         if not io_cols:
             return {'error': 'IO table not found'}
@@ -339,6 +341,17 @@ def get_transactions(mode_filter):
         for r in det_rows:
             did = ss(r[d_ioid_i]) if d_ioid_i is not None else ''
             det_lkp.setdefault(did, []).append(r)
+
+        # IO Other Details: io_id → PNo (Cash Discount)
+        oth_lkp = {}
+        if oth_cols:
+            o_ioid_i = col_i(oth_cols, ['io id', 'ioid'])
+            pno_i    = col_i(oth_cols, ['pno'])
+            if o_ioid_i is not None and pno_i is not None:
+                for r in oth_rows:
+                    oid = ss(r[o_ioid_i])
+                    val = ss(r[pno_i])
+                    oth_lkp[oid] = val
 
         def agg_details(rows):
             """Return per-row details list plus totals."""
@@ -493,6 +506,7 @@ def get_transactions(mode_filter):
                 'adjustments': adjustments,
                 'payments':    entries,
                 'days_since_load': days_since(raw_date),
+                'cd':          oth_lkp.get(io_id, ''),
             })
 
         return orders
@@ -1130,6 +1144,12 @@ def download_url(url, timeout=10):
 
 @app.route('/api/update/check')
 def update_check():
+    enable_updates = CFG.get('ENABLE_UPDATES', 'False').strip().lower() in ('true', 'yes', '1')
+    if not enable_updates:
+        return jsonify({
+            'update_available': False,
+            'message': 'Updates are disabled in config'
+        })
     import re
     try:
         # Check remote app.py version
@@ -1162,6 +1182,12 @@ def update_check():
 
 @app.route('/api/update/apply', methods=['POST'])
 def update_apply():
+    enable_updates = CFG.get('ENABLE_UPDATES', 'False').strip().lower() in ('true', 'yes', '1')
+    if not enable_updates:
+        return jsonify({
+            'status': 'error',
+            'message': 'Updates are disabled in config'
+        })
     try:
         html_url = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/templates/index.html"
         app_url = "https://raw.githubusercontent.com/shivagolla1/Rice-Mill-Dashboard/main/App/app.py"

@@ -31,3 +31,11 @@ INDUSTRY_LOGO = static/logo.jpg
 MDB_FILE=D:\SGRI\SGRI 2025-2026.mdb
 
 
+# ── AUTO UPDATE ──────────────────────────────────────────────────
+
+# Whether the dashboard should check for updates from GitHub on startup
+# Options: True or False (default: False)
+ENABLE_UPDATES = False
+
+
+
