@@ -648,6 +648,30 @@
       box-shadow: inset 4px 0 0 var(--red)
     }
 
+    #th-late-toggle {
+      cursor: pointer;
+      position: relative;
+      transition: all .2s;
+    }
+
+    #th-late-toggle::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+      background: var(--red);
+      opacity: 0.4;
+      transition: all .2s ease;
+    }
+
+    #th-late-toggle:hover::before,
+    #th-late-toggle.active::before {
+      width: 8px;
+      opacity: 1;
+    }
+
     .col-party {
       max-width: 160px;
       overflow: hidden;
@@ -2035,7 +2059,7 @@
           <table>
             <thead>
               <tr>
-                <th style="width:24px"></th>
+                <th style="width:24px" id="th-late-toggle" onclick="toggleLateFilter()" title="Click to filter late payments"></th>
                 <th class="sort" id="th-id" onclick="sortCol('bill_no')">Bill No</th>
                 <th>Broker</th>
                 <th>Party</th>
@@ -2375,7 +2399,7 @@
     }
     function inputToDate(s) { if (!s) return null; const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) }
 
-    let allOrders = [], orderSort = { col: 'loaded_date', dir: -1 }, payFilter = 'all';
+    let allOrders = [], orderSort = { col: 'loaded_date', dir: -1 }, payFilter = 'all', filterLateOnly = false;
     let allPurchases = [], purSort = { col: 'loaded_date', dir: -1 }, purPayFilter = 'all';
     let chartsInit = false, dataLoaded = false, exploreLoaded = false, stocksLoaded = false, jnlLoaded = false, purLoaded = false;
 
@@ -2495,6 +2519,12 @@
       const dateFrom = inputToDate(document.getElementById('f-from').value);
       const dateTo = inputToDate(document.getElementById('f-to').value);
       let rows = allOrders.filter(o => {
+        if (filterLateOnly) {
+          const cdVal = parseFloat(String(o.cd).replace(/[^\d.]/g, '')) || 0;
+          const bal = o.balance ?? o.amount;
+          const isLate = bal > 0 && ((cdVal === 5 && o.days_since_load > 7) || (cdVal === 4 && o.days_since_load > 30));
+          if (!isLate) return false;
+        }
         if (ioid && !String(o.io_id).toLowerCase().includes(ioid) && !String(o.bill_no || '').toLowerCase().includes(ioid)) return false;
         if (party && !o.party.toLowerCase().includes(party)) return false;
         if (broker && !o.broker.toLowerCase().includes(broker)) return false;
@@ -2526,7 +2556,7 @@
       return rows;
     }
     function applyF() { renderOrders(getFiltered()) }
-    function resetF() {
+     function resetF() {
       document.getElementById('f-ioid').value = '';
       document.getElementById('f-party').value = '';
       document.getElementById('f-broker').value = '';
@@ -2538,10 +2568,31 @@
       });
       orderSort = { col: 'loaded_date', dir: -1 };
       payFilter = 'all';
+      filterLateOnly = false;
+      const thLate = document.getElementById('th-late-toggle');
+      if (thLate) {
+        thLate.classList.remove('active');
+        thLate.setAttribute('title', 'Click to filter late payments');
+      }
       document.querySelectorAll('#pay-seg .seg-btn').forEach(b => b.classList.remove('active', 'pending', 'unpaid', 'paid'));
       document.getElementById('pseg-all')?.classList.add('active');
       document.querySelectorAll('thead th').forEach(th => th.classList.remove('asc', 'desc'));
       document.getElementById('th-date')?.classList.add('desc');
+      renderOrders(getFiltered());
+    }
+
+    function toggleLateFilter() {
+      filterLateOnly = !filterLateOnly;
+      const th = document.getElementById('th-late-toggle');
+      if (th) {
+        if (filterLateOnly) {
+          th.classList.add('active');
+          th.setAttribute('title', 'Click to show all payments');
+        } else {
+          th.classList.remove('active');
+          th.setAttribute('title', 'Click to filter late payments');
+        }
+      }
       renderOrders(getFiltered());
     }
 
