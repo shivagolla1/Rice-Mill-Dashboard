@@ -17,6 +17,12 @@ echo  Rice Mill Dashboard - Manual Cloud Sync
 echo ====================================================
 echo.
 
+"%PYTHON%" -c "import requests" >nul 2>&1
+if errorlevel 1 (
+    echo  [INFO] Installing sync dependencies...
+    "%PYTHON%" -m pip install --quiet requests cryptography
+)
+
 "%PYTHON%" "%SCRIPT_DIR%local_sync_agent.py" --once
 
 echo.

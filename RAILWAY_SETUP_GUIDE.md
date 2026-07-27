@@ -23,7 +23,7 @@ This guide explains how to host your dashboard on **Railway** for mobile access 
 
 4. **Set Environment Variables on Railway**:
    - Go to **Variables** tab in Railway and add the following keys:
-     - `SYNC_SECRET_TOKEN` = `RiceMillSyncSecretToken2026!` *(or your custom secret token)*
+     - `SYNC_SECRET_TOKEN` = `RiceMillSyncSecretToken2026!@#` *(or your custom secret token)*
      - `ENCRYPTION_KEY` = `RiceMillDashboardDefaultEncryptionKey2026!` *(or your custom AES key)*
      - `ENABLE_AUTH` = `True`
      - `ADMIN_PASSWORD` = `admin123` *(change to your admin password)*

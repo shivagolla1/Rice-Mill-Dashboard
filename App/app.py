@@ -1490,10 +1490,61 @@ def api_sync_database():
         return jsonify({'status': 'error', 'message': 'Unauthorized sync token'}), 401
         
     try:
-        payload = request.data
-        if not payload:
+        import base64
+        chunk_idx = 0
+        total_chunks = 1
+        upload_id = "default"
+        chunk_bytes = b''
+
+        if request.is_json:
+            json_data = request.get_json(silent=True) or {}
+            b64_str = json_data.get('data', '')
+            chunk_bytes = base64.b64decode(b64_str) if b64_str else b''
+            chunk_idx = int(json_data.get('chunk_idx', 0))
+            total_chunks = int(json_data.get('total_chunks', 1))
+            upload_id = json_data.get('upload_id', 'default')
+            if not sync_token:
+                sync_token = json_data.get('token', '').strip()
+        elif 'file' in request.files:
+            chunk_bytes = request.files['file'].read()
+            chunk_idx = int(request.headers.get('X-Chunk-Index', 0))
+            total_chunks = int(request.headers.get('X-Total-Chunks', 1))
+            upload_id = request.headers.get('X-Upload-ID', 'default')
+        else:
+            chunk_bytes = request.data
+            chunk_idx = int(request.headers.get('X-Chunk-Index', 0))
+            total_chunks = int(request.headers.get('X-Total-Chunks', 1))
+            upload_id = request.headers.get('X-Upload-ID', 'default')
+
+        if not chunk_bytes and total_chunks > 0:
             return jsonify({'status': 'error', 'message': 'Empty payload'}), 400
-            
+
+        temp_dir = os.environ.get('DATA_DIR', '') or (os.path.dirname(MDB_PATH) if MDB_PATH else os.path.join(EXE_DIR, 'data'))
+        try:
+            os.makedirs(temp_dir, exist_ok=True)
+        except Exception:
+            temp_dir = '/tmp' if os.name != 'nt' else os.path.join(EXE_DIR, 'data')
+            os.makedirs(temp_dir, exist_ok=True)
+
+        temp_file = os.path.join(temp_dir, f"temp_{upload_id}.part")
+
+
+        # Write or append chunk to temp file
+        mode = 'wb' if chunk_idx == 0 else 'ab'
+        with open(temp_file, mode) as f:
+            f.write(chunk_bytes)
+
+        # If more chunks are expected, return success for chunk
+        if chunk_idx < total_chunks - 1:
+            return jsonify({'status': 'chunk_received', 'chunk_idx': chunk_idx, 'total_chunks': total_chunks})
+
+        # Final chunk received: assemble complete payload
+        with open(temp_file, 'rb') as f:
+            payload = f.read()
+
+        try: os.remove(temp_file)
+        except: pass
+
         enc_key = os.environ.get('ENCRYPTION_KEY', 'RiceMillDashboardDefaultEncryptionKey2026!')
         
         try:
@@ -1506,9 +1557,6 @@ def api_sync_database():
         except Exception:
             mdb_bytes = decrypted_bytes
 
-        target_dir = os.path.dirname(MDB_PATH) if MDB_PATH else os.path.join(EXE_DIR, 'data')
-        os.makedirs(target_dir, exist_ok=True)
-        
         if not MDB_PATH:
             MDB_PATH = os.path.join(target_dir, 'Database.mdb')
             save_config(MDB_PATH)
@@ -1532,6 +1580,7 @@ def api_sync_database():
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Sync failed: {str(e)}'}), 500
+
 
 @app.before_request
 def restrict_unlicensed():

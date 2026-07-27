@@ -30,7 +30,7 @@ CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sync_con
 DEFAULT_CONFIG = {
     "MDB_PATH": r"D:\SGRI\SGRI 2025-2026.mdb",
     "CLOUD_URL": "https://your-app.up.railway.app",
-    "SYNC_SECRET_TOKEN": "RiceMillSyncSecretToken2026!",
+    "SYNC_SECRET_TOKEN": "RiceMillSyncSecretToken2026!@#",
     "ENCRYPTION_KEY": "RiceMillDashboardDefaultEncryptionKey2026!",
     "SYNC_MODE": "AUTO",
     "CHECK_INTERVAL_SEC": 30
@@ -155,25 +155,54 @@ def sync_now(cfg=None):
         encrypted_payload = crypto_utils.encrypt_data(compressed_bytes, enc_key)
         print(f"  * AES-256 encrypted payload ready")
 
-        headers = {
-            'Content-Type': 'application/octet-stream',
-            'X-Sync-Token': sync_token
-        }
+        # Send in 256 KB chunks to bypass Windows 10053 socket aborts and HTTP proxy limits
+        CHUNK_SIZE = 256 * 1024
+        total_chunks = (len(encrypted_payload) + CHUNK_SIZE - 1) // CHUNK_SIZE
+        upload_id = hashlib.md5(f"{time.time()}".encode()).hexdigest()[:10]
 
+        import base64, requests
+        session = requests.Session()
         endpoint = f"{cloud_url}/api/sync-database"
-        resp = requests.post(endpoint, data=encrypted_payload, headers=headers, timeout=60)
 
-        if resp.status_code == 200:
+        print(f"  * Uploading payload in {total_chunks} chunks (256 KB each)...")
+        resp = None
+
+        for i in range(total_chunks):
+            chunk = encrypted_payload[i * CHUNK_SIZE : (i + 1) * CHUNK_SIZE]
+            b64_chunk = base64.b64encode(chunk).decode('utf-8')
+            json_body = {
+                'token': sync_token,
+                'data': b64_chunk,
+                'chunk_idx': i,
+                'total_chunks': total_chunks,
+                'upload_id': upload_id
+            }
+            headers = {
+                'Content-Type': 'application/json',
+                'X-Sync-Token': sync_token,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) RiceMillSyncAgent/1.0'
+            }
+            resp = session.post(endpoint, json=json_body, headers=headers, timeout=120)
+
+            if resp.status_code != 200:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [FAILED] Chunk {i+1}/{total_chunks} failed: {resp.text}")
+                return False
+
+        if resp and resp.status_code == 200:
             res = resp.json()
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [SUCCESS] Database synced to cloud! ({res.get('size_bytes', 0)} bytes)")
             return True
         else:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [FAILED] Server returned {resp.status_code}: {resp.text}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [FAILED] Upload failed on final chunk")
             return False
+
+
+
 
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [ERROR] Sync failed: {e}")
         return False
+
 
 def watch_loop():
     cfg = load_config()

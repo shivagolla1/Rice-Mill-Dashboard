@@ -5,10 +5,11 @@
 MDB_PATH = D:\SGRI\SGRI 2025-2026.mdb
 
 # Your Railway cloud app URL (e.g. https://rice-mill-dashboard.up.railway.app)
-CLOUD_URL = https://your-app.up.railway.app
+CLOUD_URL = https://ricemilldashboard.up.railway.app
 
 # Secret token matching your Railway environment variable SYNC_SECRET_TOKEN
 SYNC_SECRET_TOKEN = RiceMillSyncSecretToken2026!
+
 
 # Secret encryption key matching your Railway environment variable ENCRYPTION_KEY
 ENCRYPTION_KEY = RiceMillDashboardDefaultEncryptionKey2026!
