@@ -8,12 +8,20 @@ from flask import session, request, redirect, url_for, jsonify, current_app
 USERS_FILE_NAME = 'users.json'
 
 def get_users_path():
-    # Use EXE_DIR if defined, or data dir
-    from app import EXE_DIR
-    data_dir = os.path.join(EXE_DIR, 'data')
+    try:
+        import sys
+        if 'app' in sys.modules:
+            base = sys.modules['app'].EXE_DIR
+        else:
+            base = os.path.dirname(os.path.abspath(__file__))
+    except Exception:
+        base = os.path.dirname(os.path.abspath(__file__))
+
+    data_dir = os.path.join(base, 'data')
     if os.path.isdir(data_dir):
         return os.path.join(data_dir, USERS_FILE_NAME)
-    return os.path.join(EXE_DIR, USERS_FILE_NAME)
+    return os.path.join(base, USERS_FILE_NAME)
+
 
 def hash_password(password: str, salt: str = None) -> str:
     """Hash password using PBKDF2-HMAC-SHA256."""
@@ -34,12 +42,34 @@ def verify_password(password: str, hashed_str: str) -> bool:
 def load_users():
     p = get_users_path()
     if not os.path.exists(p):
-        return init_default_users()
-    try:
-        with open(p, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return init_default_users()
+        users = init_default_users()
+    else:
+        try:
+            with open(p, 'r', encoding='utf-8') as f:
+                users = json.load(f)
+        except Exception:
+            users = init_default_users()
+
+    # Automatically sync admin/staff passwords from environment variables if set
+    env_admin_pass = os.environ.get('ADMIN_PASSWORD', '').strip()
+    env_staff_pass = os.environ.get('STAFF_PASSWORD', '').strip()
+    updated = False
+
+    if env_admin_pass and 'admin' in users:
+        if not verify_password(env_admin_pass, users['admin']['password_hash']):
+            users['admin']['password_hash'] = hash_password(env_admin_pass)
+            updated = True
+
+    if env_staff_pass and 'staff' in users:
+        if not verify_password(env_staff_pass, users['staff']['password_hash']):
+            users['staff']['password_hash'] = hash_password(env_staff_pass)
+            updated = True
+
+    if updated:
+        save_users(users)
+
+    return users
+
 
 def save_users(users_dict):
     p = get_users_path()
