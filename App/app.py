@@ -47,13 +47,17 @@ if getattr(sys, 'frozen', False):
 else:
     BASE = os.path.dirname(os.path.abspath(__file__))
 
+if BASE not in sys.path:
+    sys.path.insert(0, BASE)
+
 app  = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = os.environ.get('SESSION_SECRET', 'RiceMillDashboardSessionSecret2026!')
 VERSION = "1.1.0"
 
-# Import Crypto & Auth helpers
+# Import Crypto & Auth helpers (resolved from sys.path)
 import crypto_utils
 import auth
+
 
 # ── FEATURE FLAGS (Hardcode to True/False for client distribution packages) ──
 SHOW_STOCKS = os.environ.get('SHOW_STOCKS', 'False').strip().lower() in ('true', '1', 'yes')
