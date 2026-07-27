@@ -141,8 +141,8 @@ def find_mdb():
     """
     Find the .mdb file to use:
     1. If MDB_FILE in config.txt points to an existing file, use it.
-    2. Otherwise, auto-detect any .mdb in the data/ folder.
-    3. Fallback: any .mdb in the app root folder.
+    2. Check DATA_DIR environment variable if specified.
+    3. Auto-detect any .mdb in data/ folder, /app/data, or app root.
     """
     configured = CFG.get('MDB_FILE', '').strip()
     if configured:
@@ -150,20 +150,25 @@ def find_mdb():
         if os.path.exists(full):
             return full
 
-    # Auto-detect: look in data/ first, then root
-    for search_dir in [os.path.join(EXE_DIR, 'data'), EXE_DIR]:
+    env_data_dir = os.environ.get('DATA_DIR', '').strip()
+    search_dirs = []
+    if env_data_dir:
+        search_dirs.append(env_data_dir)
+    search_dirs.extend([os.path.join(EXE_DIR, 'data'), '/app/data', '/app/App/data', EXE_DIR])
+
+    for search_dir in search_dirs:
         if not os.path.isdir(search_dir):
             continue
         files = [f for f in os.listdir(search_dir) if f.lower().endswith('.mdb')]
         if files:
-            # Prefer most recently modified
             files.sort(key=lambda f: os.path.getmtime(os.path.join(search_dir, f)), reverse=True)
             return os.path.join(search_dir, files[0])
 
-    # Nothing found — return the configured path anyway so error messages are clear
-    return configured if configured and os.path.isabs(configured) else os.path.join(EXE_DIR, configured) if configured else os.path.join(EXE_DIR, 'data', 'Database.mdb')
+    default_dir = env_data_dir if env_data_dir else os.path.join(EXE_DIR, 'data')
+    return configured if configured and os.path.isabs(configured) else os.path.join(default_dir, 'Database.mdb')
 
 MDB_PATH = find_mdb()
+
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 def sf(v):
