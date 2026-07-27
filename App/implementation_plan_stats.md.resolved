@@ -1,0 +1,102 @@
+# Implementation Plan — Rice Mill Business Performance & Intelligence Report
+
+This plan outlines how we can build a Tally-style comprehensive business analysis report for your Rice Mill, using the data available in your MS Access `.mdb` database.
+
+---
+
+## 1. What We Have: Data Discovery & Real-World Metrics
+
+We analyzed the structure of your MS Access database (`SGRI 2025-2026.mdb`) and verified that it contains a rich general ledger, transactional details, cash/bank postings, and broker tables. 
+
+Here are the key metrics extracted directly from your database:
+
+### Core Tables & Volumetrics
+- **`Accounts`** (24,775 ledger accounts): Contains complete master lists classified by `Nature` (e.g., *Trade Creditors*, *Trade Debtors*, *Expenses*, *Fixed Assets*, *Banks*).
+- **`IO` & `IO Details`**: Captures sales and purchase transactions, quantities in bags/quintals, rates, and varieties.
+- **`Journal`** (13,379 postings): Tracks cash receipts, bank transactions, and direct expense payments.
+- **`Brokers`** (405 records): Links sales to agents.
+
+### Live Database Financial Summary (FY 2025-26 Sample)
+- **Sales Revenue**: Rs. 34.50 Crore (282,489 bags / 95,910 quintals)
+- **Outstanding Debtors**: Rs. 4.23 Crore
+- **Paddy Purchases**: Rs. 41.52 Crore (379,115 bags / 166,402 quintals)
+- **Outstanding Creditors**: Rs. 1.09 Crore
+- **Total Cash Inflows**: Rs. 56.44 Crore | **Total Cash Outflows**: Rs. 56.97 Crore
+- **SBI CC Deposits (Dr)**: Rs. 53.56 Crore | **SBI CC Withdrawals (Cr)**: Rs. 40.66 Crore
+- **Average Customer Collection Period**: **31.8 days**
+- **Average Supplier Payment Period**: **21.5 days**
+
+---
+
+## 2. What We Can Do: Reconstructing Tally-Style Reports
+
+We propose adding a **"Business Intelligence / CFO Report"** tab to the dashboard. This report will feature four main sections:
+
+### Section A: Reconstructed Profit & Loss Statement (P&L)
+We can aggregate `IO Details` and `Journal` postings to reconstruct a complete P&L:
+
+| P&L Component | Source / Calculation Method |
+| :--- | :--- |
+| **1. Revenue from Operations** | Sales value of finished goods (Rice varieties: HMT, BPT, etc.) and byproducts (Bran, Broken Rice, Husk, Ash) from `IO` + `IO Details`. |
+| **2. Cost of Goods Sold (COGS)** | Paddy purchases value + Carriage Inward (`Paddy Frieght` & `Paddy Lorry Advance` from `Journal`) - Closing Stock. |
+| **3. Gross Profit (GP)** | Revenue minus COGS (calculated as percentage margin). |
+| **4. Direct Labor / Milling Costs** | Coolie and loading expenses (`Labour Charges` & `Hamali` from `Journal`). |
+| **5. Operating Expenses (OPEX)** | Admin and overheads: `Salaries`, `Petrol` (vehicle), `Mess/Cooking`, `Sadar` (admin), `Battalu` (welfare). |
+| **6. Operating EBITDA** | Gross Profit minus direct labor and operating expenses. |
+
+### Section B: Cash Flow & Banking Flowchart
+Using the `Journal` table postings, we can map out a visual flow of cash and bank movements using a Mermaid diagram.
+
+```mermaid
+flowchart TD
+    Sales[Rice Sales & Byproducts] -->|Cash Collection: 56.44 Cr| CashBox[Cash in Hand]
+    CashBox -->|Bank Deposits: 53.56 Cr| SBIBank[SBI SIB CC Bank Account]
+    CashBox -->|Direct Cash Expenses| Expenses[Wages, Freight, Petrol]
+    SBIBank -->|Supplier Bank Payments: 40.66 Cr| Creditors[Paddy & Gunny Suppliers]
+    SBIBank -->|Cash Withdrawals| CashBox
+```
+
+### Section C: Operational & Liquidity Analytics
+We can calculate and plot key efficiency indicators:
+- **Cash Discount (CD) Performance**: Percentage of customers paying within terms (7-day/30-day limits).
+- **DSO & DPO Trends**: Customer payment speed (31.8 days) vs. Supplier payment speed (21.5 days).
+- **Stock Turnover Ratio**: Calculation of how fast inventory rotates (COGS / Average Stock).
+
+### Section D: Sourcing & Sales Audit (Top 10 Rankings)
+- **Top 10 Buyers**: Revenue contribution, bag volume, and current outstanding balance.
+- **Top 10 Suppliers**: Paddy quantity supplied, total billing, and outstanding amount.
+- **Overpaid Suppliers / Missing Invoices**: A report showing suppliers with debit balances (indicating prepayments or unrecorded purchase bills).
+
+---
+
+## 3. Open Questions for the User
+
+> [!IMPORTANT]
+> Please review these questions and provide your feedback:
+> 1. **Expenses Categorization**: Are there other expense accounts in your Tally system that you want us to look for in the `Accounts` nature and group together in the OPEX section?
+> 2. **Capital Expenditures**: Should capital outflows (like `Construction` and `New Godown`) be shown as part of the operating P&L, or kept in a separate "Capital Expenditures" section?
+> 3. **Exporting Capabilities**: Do you need the ability to export this P&L and Buyer/Supplier audits directly to Excel or PDF?
+
+---
+
+## 4. Proposed Changes
+
+We will create a new backend module `stats_report.py` to handle the calculations and update `index.html` to add the beautiful reporting interface.
+
+### [NEW] [stats_report.py](file:///c:/Rice%20Mill%20Dashboard/Rice%20Mill%20Dashboard/App/stats_report.py)
+Provides calculations for Reconstructed P&L, Banking Flows, DSO/DPO, and Supplier Audits.
+
+### [MODIFY] [app.py](file:///c:/Rice%20Mill%20Dashboard/Rice%20Mill%20Dashboard/App/app.py)
+Register API endpoints `/api/reports/profit-loss`, `/api/reports/cash-flow`, and `/api/reports/aging`.
+
+### [MODIFY] [index.html](file:///c:/Rice%20Mill%20Dashboard/Rice%20Mill%20Dashboard/App/templates/index.html)
+Add the "BI Reports" layout tab containing interactive tables, cash flow charts, and metrics cards.
+
+---
+
+## 5. Verification Plan
+
+### Automated Tests
+- Run validation scripts checking that:
+  - Total sales and purchases from `get_transactions` match the summaries in the new reports.
+  - Cash and Bank ledger postings are balanced.

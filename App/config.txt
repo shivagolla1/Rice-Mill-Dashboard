@@ -13,9 +13,6 @@ INDUSTRY_NAME = Sapthagiri Rice Industries
 INDUSTRY_ADDRESS = Miryalaguda
 
 
-# Currency symbol: Rs. or ₹ or USD etc.  (default: Rs.)
-CURRENCY_SYMBOL = ₹
-
 # Browser tab title (leave blank to auto-use INDUSTRY_NAME)
 APP_TITLE =
 
@@ -36,6 +33,4 @@ MDB_FILE=D:\SGRI\SGRI 2025-2026.mdb
 # Whether the dashboard should check for updates from GitHub on startup
 # Options: True or False (default: False)
 ENABLE_UPDATES = False
-
-
 

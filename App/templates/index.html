@@ -549,10 +549,99 @@
       color: var(--tx)
     }
 
-    .ms-opt input[type=checkbox] {
-      accent-color: var(--accent);
-      width: 13px;
-      height: 13px
+    .ms-clear-row {
+      padding: 6px 14px;
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 1px solid var(--bdr2);
+      text-align: right;
+      transition: all 0.15s ease;
+    }
+
+    .ms-clear-row:hover {
+      background: var(--sur2);
+      text-decoration: underline;
+    }
+
+    .totals-bar {
+      margin-top: 12px;
+      padding: 10px 16px;
+      background: var(--sur2);
+      border: 1px solid var(--bdr);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 44px;
+      box-sizing: border-box;
+    }
+
+    .btn-totals-trigger {
+      display: inline-flex;
+      align-items: center;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-totals-trigger:hover {
+      background: var(--accent-lt);
+    }
+
+    .btn-totals-trigger:active {
+      transform: scale(0.98);
+    }
+
+    .totals-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .total-item {
+      font-size: 13.5px;
+      color: var(--tx);
+      font-weight: 500;
+    }
+
+    .total-item strong {
+      color: var(--accent);
+      font-size: 14.5px;
+      font-weight: 700;
+      margin-left: 4px;
+      font-family: var(--mono);
+    }
+
+    .total-divider {
+      color: var(--bdr2);
+      font-weight: 300;
+    }
+
+    .btn-totals-hide {
+      margin-left: auto;
+      background: transparent;
+      border: none;
+      color: var(--tx3);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      border-radius: 4px;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .btn-totals-hide:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--tx);
     }
 
     .btn-rst {
@@ -1864,6 +1953,190 @@
         display: none !important;
       }
     }
+
+    /* BI Reports Styles */
+    .bi-tab-bar {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--bdr);
+      margin-bottom: 20px;
+      padding-bottom: 1px;
+    }
+
+    .bi-tab-btn {
+      padding: 8px 16px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--tx2);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .bi-tab-btn:hover {
+      color: var(--tx);
+      background: var(--sur2);
+      border-radius: 4px 4px 0 0;
+    }
+
+    .bi-tab-btn.active {
+      color: var(--accent-lt);
+      border-bottom-color: var(--accent-lt);
+    }
+
+    .bi-subpage {
+      display: none;
+    }
+
+    .bi-subpage.active {
+      display: block;
+    }
+
+    /* P&L Accounting Layout */
+    .pl-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+      background: var(--sur);
+      border-radius: var(--r);
+      overflow: hidden;
+      border: 1px solid var(--bdr);
+    }
+
+    .pl-table th,
+    .pl-table td {
+      padding: 10px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--bdr);
+      font-size: 13px;
+    }
+
+    .pl-table th {
+      background: var(--sur2);
+      color: var(--tx);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    .pl-row-hdr {
+      font-weight: 700;
+      background: rgba(201, 100, 66, 0.03);
+      color: var(--tx);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .pl-row-sub {
+      padding-left: 32px !important;
+      color: var(--tx2);
+    }
+
+    .pl-row-total {
+      font-weight: 700;
+      background: var(--sur2);
+      color: var(--tx);
+      border-top: 1px solid var(--tx2);
+      border-bottom: 2px double var(--tx) !important;
+    }
+
+    .pl-row-net {
+      font-weight: 700;
+      background: var(--gbg);
+      color: var(--green);
+      border-top: 2px solid var(--green);
+      border-bottom: 2px double var(--green) !important;
+      font-size: 14px;
+    }
+
+    .pl-row-capex-hdr {
+      font-weight: 700;
+      background: var(--ybg);
+      color: var(--yellow);
+      text-transform: uppercase;
+    }
+
+    .pl-num {
+      text-align: right !important;
+      font-family: var(--mono);
+    }
+
+    .pl-rate {
+      color: var(--tx3);
+      font-size: 11px;
+    }
+
+    /* Interactive Analyzer */
+    .ia-controls {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: var(--sur);
+      padding: 12px 16px;
+      border-radius: var(--r);
+      border: 1px solid var(--bdr);
+    }
+
+    .ia-controls .fg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ia-controls .fl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--tx3);
+      text-transform: uppercase;
+    }
+
+    .ia-search {
+      padding: 6px 12px;
+      border: 1px solid var(--bdr2);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--tx);
+      font-size: 13px;
+      outline: none;
+      width: 200px;
+    }
+
+    .ia-search:focus {
+      border-color: var(--accent);
+    }
+
+    .ia-btn-group {
+      display: flex;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--bdr2);
+    }
+
+    .ia-btn {
+      padding: 6px 12px;
+      background: var(--sur);
+      border: none;
+      color: var(--tx2);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.1s ease;
+    }
+
+    .ia-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .ia-btn:not(:last-child) {
+      border-right: 1px solid var(--bdr2);
+    }
   </style>
 </head>
 
@@ -1916,6 +2189,7 @@
           </svg></span>
         <span class="nav-txt"> Journal</span>
       </div>
+      {% if show_stocks %}
       <div class="nav-item" data-page="stocks">
         <span class="nav-icon"><svg viewBox="0 0 24 24">
             <path
@@ -1923,28 +2197,15 @@
           </svg></span>
         <span class="nav-txt"> Stocks</span>
       </div>
-      <!--
+      {% endif %}
+      {% if show_bi_reports %}
       <div class="nav-item" data-page="stats">
         <span class="nav-icon"><svg viewBox="0 0 24 24">
             <path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z" />
           </svg></span>
-        <span class="nav-txt"> Stats</span>
+        <span class="nav-txt"> BI Reports</span>
       </div>
-      <div class="nav-item" data-page="data">
-        <span class="nav-icon"><svg viewBox="0 0 24 24">
-            <path
-              d="M20 13H4c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2zm-2 5h-2v-2h2v2zm2-13H4c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-2 5h-2V8h2v2z" />
-          </svg></span>
-        <span class="nav-txt"> Data</span>
-      </div>
-      <div class="nav-item" data-page="explore">
-        <span class="nav-icon"><svg viewBox="0 0 24 24">
-            <path
-              d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-          </svg></span>
-        <span class="nav-txt"> Explore</span>
-      </div>
-      -->
+      {% endif %}
       {% if network_url %}
       <div class="sb-db"
         style="padding:10px 14px; border-top:1px solid var(--bdr); min-width:var(--sw); font-size:11px; color:var(--txt-muted); line-height:1.4;">
@@ -1988,6 +2249,7 @@
           </svg></span>
         <span class="sb-foot-txt"> Last sync<br><span id="sync-time">—</span></span>
       </div>
+    </div>
   </nav>
 
   <div class="main">
@@ -2058,7 +2320,8 @@
           <table>
             <thead>
               <tr>
-                <th style="width:24px" id="th-late-toggle" onclick="toggleLateFilter()" title="Click to filter late payments"></th>
+                <th style="width:24px" id="th-late-toggle" onclick="toggleLateFilter()"
+                  title="Click to filter late payments"></th>
                 <th class="sort" id="th-id" onclick="sortCol('bill_no')">Bill No</th>
                 <th>Broker</th>
                 <th>Party</th>
@@ -2085,6 +2348,20 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Totals Row/Button -->
+        <div class="totals-bar" id="totals-bar-sales">
+          <button id="btn-show-totals-sales" class="btn-totals-trigger" onclick="toggleTotals('sales')">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:6px;"><path d="M19 13H5v-2h14v2z"/></svg>
+            Show Totals
+          </button>
+          <div id="totals-content-sales" class="totals-content" style="display:none">
+            <span class="total-item">Total Quintals: <strong id="total-qtl-sales">0.00</strong></span>
+            <span class="total-divider">|</span>
+            <span class="total-item">Total Amount: <strong id="total-amt-sales">0.00</strong></span>
+            <button class="btn-totals-hide" onclick="toggleTotals('sales')" title="Hide Totals">×</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2183,10 +2460,25 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Totals Row/Button -->
+        <div class="totals-bar" id="totals-bar-pur">
+          <button id="btn-show-totals-pur" class="btn-totals-trigger" onclick="toggleTotals('pur')">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:6px;"><path d="M19 13H5v-2h14v2z"/></svg>
+            Show Totals
+          </button>
+          <div id="totals-content-pur" class="totals-content" style="display:none">
+            <span class="total-item">Total Quintals: <strong id="total-qtl-pur">0.00</strong></span>
+            <span class="total-divider">|</span>
+            <span class="total-item">Total Amount: <strong id="total-amt-pur">0.00</strong></span>
+            <button class="btn-totals-hide" onclick="toggleTotals('pur')" title="Hide Totals">×</button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- STOCKS -->
+    {% if show_stocks %}
     <div class="page" id="page-stocks">
       <div class="ph ph-sticky">
         <div class="print-brand-header">
@@ -2258,54 +2550,87 @@
         </div>
       </div>
     </div>
+    {% endif %}
 
     <!-- STATS -->
+    {% if show_bi_reports %}
     <div class="page" id="page-stats">
-      <div class="ph">
-        <div>
-          <div class="pt">Analytics</div>
-          <div class="ps">Derived from orders</div>
+      <div class="ph ph-sticky">
+        <div class="screen-header-title">
+          <div class="pt">Business Performance & Analytics</div>
+          <div class="ps">Simplified Trading Profit & Loss and Broker/Party Analyzer</div>
         </div>
       </div>
+
       <div class="pc">
-        <div class="cards" id="stats-cards"></div>
-        <div class="sgr" id="stats-charts">
-          <div class="loading">
-            <div class="spin"></div>Loading…
+        <!-- Date filter bar -->
+        <div class="fbar" style="margin-bottom: 20px;">
+          <div class="fg"><span class="fl">From Date</span><input type="date" id="bi-from" onchange="loadBiStats()" />
+          </div>
+          <div class="fg"><span class="fl">To Date</span><input type="date" id="bi-to" onchange="loadBiStats()" /></div>
+          <button class="btn-rst" onclick="resetBiFilters()">Reset</button>
+        </div>
+
+        <!-- Sub-tabs bar -->
+        <div class="bi-tab-bar">
+          <button class="bi-tab-btn active" id="btn-bi-pl" onclick="switchBiTab('pl')">Trading P&L</button>
+          <button class="bi-tab-btn" id="btn-bi-analyzer" onclick="switchBiTab('analyzer')">Broker & Party
+            Analyzer</button>
+        </div>
+
+        <!-- Tab 1: P&L Statement -->
+        <div class="bi-subpage active" id="bi-subpage-pl">
+          <div id="bi-pl-container">
+            <div class="loading">
+              <div class="spin"></div>Loading P&L Statement…
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Broker & Party Analyzer -->
+        <div class="bi-subpage" id="bi-subpage-analyzer">
+          <!-- Controls for Analyzer -->
+          <div class="ia-controls">
+            <div class="fg">
+              <span class="fl">Analyzer Mode</span>
+              <div class="ia-btn-group">
+                <button class="ia-btn active" id="ia-mode-sales" onclick="setIaMode('sales')">Sales Activity</button>
+                <button class="ia-btn" id="ia-mode-purchases" onclick="setIaMode('purchases')">Purchases
+                  Activity</button>
+              </div>
+            </div>
+            <div class="fg">
+              <span class="fl">Group By</span>
+              <div class="ia-btn-group">
+                <button class="ia-btn active" id="ia-group-party" onclick="setIaGroup('party')">Party
+                  (Buyer/Supplier)</button>
+                <button class="ia-btn" id="ia-group-broker" onclick="setIaGroup('broker')">Broker</button>
+              </div>
+            </div>
+            <div class="fg" style="flex:1; min-width:200px;">
+              <span class="fl">Search Name</span>
+              <input type="text" class="ia-search" id="ia-search-input" placeholder="Search by name…"
+                oninput="renderIaTable()" style="width:100%;" />
+            </div>
+          </div>
+
+          <!-- Analyzer Table -->
+          <div class="tw">
+            <table>
+              <thead>
+                <tr id="ia-table-headers">
+                  <!-- Dynamic headers populated by JS -->
+                </tr>
+              </thead>
+              <tbody id="ia-table-body">
+                <!-- Dynamically populated by JS -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- DATA -->
-    <div class="page" id="page-data">
-      <div class="ph">
-        <div>
-          <div class="pt">Database Tables</div>
-          <div class="ps" id="db-filename-sub">Reading database…</div>
-        </div>
-      </div>
-      <div class="pc" id="data-content">
-        <div class="loading">
-          <div class="spin"></div>Reading tables…
-        </div>
-      </div>
-    </div>
-
-    <!-- EXPLORE -->
-    <div class="page" id="page-explore">
-      <div class="ph">
-        <div>
-          <div class="pt">IO Explorer</div>
-          <div class="ps">Filter bills — see IO + Details + Journal merged</div>
-        </div>
-      </div>
-      <div class="pc" id="explore-content">
-        <div class="loading">
-          <div class="spin"></div>Loading IO table…
-        </div>
-      </div>
-    </div>
+    {% endif %}
 
     <!-- JOURNAL -->
     <div class="page" id="page-journal">
@@ -2340,9 +2665,9 @@
       </div>
       <div class="pc">
         <div class="fbar" id="jnl-fbar">
-          <div class="fg"><span class="fl">Dr Account</span><input type="text" id="jf-dr" placeholder="Search…"
+          <div class="fg"><span class="fl">Jama Account</span><input type="text" id="jf-dr" placeholder="Search…"
               style="width:140px" oninput="jApplyF()" /></div>
-          <div class="fg"><span class="fl">Cr Account</span><input type="text" id="jf-cr" placeholder="Search…"
+          <div class="fg"><span class="fl">Karchu Account</span><input type="text" id="jf-cr" placeholder="Search…"
               style="width:140px" oninput="jApplyF()" /></div>
           <div class="fg"><span class="fl">From</span><input type="date" id="jf-from" onchange="jApplyF()" /></div>
           <div class="fg"><span class="fl">To</span><input type="date" id="jf-to" onchange="jApplyF()" /></div>
@@ -2355,9 +2680,9 @@
               <tr>
                 <th class="sort" id="jth-id" onclick="jSort('journal_id')">Journal ID</th>
                 <th class="sort desc" id="jth-date" onclick="jSort('date')">Date</th>
-                <th>Debit/Karchu Account</th>
-                <th class="num">Amount</th>
                 <th>Credit/Jama Account</th>
+                <th class="num">Amount</th>
+                <th>Debit/Karchu Account</th>
                 <th>Details</th>
                 <th>Type</th>
               </tr>
@@ -2400,7 +2725,7 @@
 
     let allOrders = [], orderSort = { col: 'loaded_date', dir: -1 }, payFilter = 'all', filterLateOnly = false;
     let allPurchases = [], purSort = { col: 'loaded_date', dir: -1 }, purPayFilter = 'all';
-    let chartsInit = false, dataLoaded = false, exploreLoaded = false, stocksLoaded = false, jnlLoaded = false, purLoaded = false;
+    let chartsInit = false, stocksLoaded = false, jnlLoaded = false, purLoaded = false;
 
     /* NAV */
     document.querySelectorAll('.nav-item').forEach(el => {
@@ -2413,9 +2738,7 @@
         if (p === 'purchases' && !purLoaded) loadPurchases();
         if (p === 'journal' && !jnlLoaded) loadJournal();
         if (p === 'stocks' && !stocksLoaded) loadStocks();
-        if (p === 'stats' && !chartsInit) loadStats();
-        if (p === 'data' && !dataLoaded) loadData();
-        if (p === 'explore' && !exploreLoaded) loadExplore();
+        if (p === 'stats' && typeof loadBiStats !== 'undefined' && !chartsInit) { chartsInit = true; loadBiStats(); }
       });
     });
     document.addEventListener('click', e => {
@@ -2471,9 +2794,44 @@
       else applyF();
     }
     function getMsVals(id) { return [...document.getElementById(id + '-panel').querySelectorAll('input:checked')].map(c => c.value) }
+    function clearMsSelection(id) {
+      const panel = document.getElementById(id + '-panel');
+      panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      msChange(id);
+    }
     function populateMs(id, vals) {
-      document.getElementById(id + '-panel').innerHTML = vals.map(v =>
+      const clearHtml = `<div class="ms-clear-row" onclick="clearMsSelection('${id}')">Clear Selection</div>`;
+      document.getElementById(id + '-panel').innerHTML = clearHtml + vals.map(v =>
         `<label class="ms-opt"><input type="checkbox" value="${esc(v)}" onchange="msChange('${id}')"> ${esc(v)}</label>`).join('');
+    }
+
+    let showTotalsState = { sales: false, pur: false };
+
+    function toggleTotals(tab) {
+      showTotalsState[tab] = !showTotalsState[tab];
+      const triggerBtn = document.getElementById(`btn-show-totals-${tab}`);
+      const contentDiv = document.getElementById(`totals-content-${tab}`);
+      
+      if (showTotalsState[tab]) {
+        triggerBtn.style.display = 'none';
+        contentDiv.style.display = 'flex';
+        if (tab === 'sales') renderOrders(getFiltered());
+        else renderPurchases(purGetFiltered());
+      } else {
+        triggerBtn.style.display = 'inline-flex';
+        contentDiv.style.display = 'none';
+      }
+    }
+
+    function updateTotals(tab, orders) {
+      if (!showTotalsState[tab]) return;
+      let totalQtl = 0, totalAmt = 0;
+      orders.forEach(o => {
+        totalQtl += parseFloat(o.qtl) || 0;
+        totalAmt += parseFloat(o.amount) || 0;
+      });
+      document.getElementById(`total-qtl-${tab}`).textContent = fmt(totalQtl);
+      document.getElementById(`total-amt-${tab}`).textContent = `${R_SYM}${fmt(totalAmt, 0)}`;
     }
 
     /* SORT */
@@ -2555,7 +2913,7 @@
       return rows;
     }
     function applyF() { renderOrders(getFiltered()) }
-     function resetF() {
+    function resetF() {
       document.getElementById('f-ioid').value = '';
       document.getElementById('f-party').value = '';
       document.getElementById('f-broker').value = '';
@@ -2704,6 +3062,7 @@
       });
       tbody.innerHTML = html;
       window._orders = orders;
+      updateTotals('sales', orders);
     }
 
     function getCompactPayLine(o) {
@@ -2757,7 +3116,7 @@
         payListHtml = `
       <div class="pay-list">
         <div style="display:grid;grid-template-columns:28px 90px 1fr 1fr 120px 80px;gap:12px;padding:0 14px 6px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3)">
-          <span></span><span>Pay Date</span><span>Dr Account</span><span>Cr Account</span><span style="text-align:right">Amount</span><span style="text-align:right">Days to Pay</span>
+          <span></span><span>Pay Date</span><span>Jama Account</span><span>Karchu Account</span><span style="text-align:right">Amount</span><span style="text-align:right">Days to Pay</span>
         </div>
         ${rows}
       </div>`;
@@ -3015,6 +3374,7 @@
       });
       tbody.innerHTML = html;
       window._purchases = orders;
+      updateTotals('pur', orders);
     }
 
     function purToggleExpand(i) {
@@ -3134,244 +3494,326 @@
       document.getElementById('sf-variety').value = '';
       stkApplyF();
     }
+  </script>
 
+  {% if show_bi_reports %}
+  <script>
+    /* ═══════════════════════════════════════════════════════════ BI REPORTS */
+     let biData = null;
+    let biMode = 'sales'; // 'sales' | 'purchases'
+    let biGroup = 'party'; // 'party' | 'broker'
+    let biSortCol = 'name';
+    let biSortDesc = false;
 
+    async function loadBiStats() {
+      const fromVal = document.getElementById('bi-from').value;
+      const toVal = document.getElementById('bi-to').value;
 
-    /* ═══════════════════════════════════════════════════════════ STATS */
-    async function loadStats() {
-      if (!allOrders.length) {
-        const res = await fetch('/api/orders'), d = await res.json();
-        if (!d.error) allOrders = d.orders || [];
-      }
-      chartsInit = true;
-      const orders = allOrders;
-      const totalAmt = orders.reduce((s, o) => s + o.amount, 0);
-      const totalQtl = orders.reduce((s, o) => s + o.qtl, 0);
-      document.getElementById('stats-cards').innerHTML = `
-    <div class="card gd"><div class="card-lbl">Total Sales</div><div class="card-val">${fmtN(orders.length)}</div></div>
-    <div class="card"><div class="card-lbl">Total Quintals</div><div class="card-val">${fmt(totalQtl, 0)}</div></div>
-    <div class="card"><div class="card-lbl">Total Value</div><div class="card-val" style="font-size:17px">${CURR}${fmt(totalAmt / 100000, 1)}L</div></div>
-    <div class="card"><div class="card-lbl">Unique Parties</div><div class="card-val">${new Set(orders.map(o => o.party)).size}</div></div>`;
-      const ACCENT = '#c96442', TEXT2 = '#8a8078', GRID = '#ddd8ce';
-      Chart.defaults.color = TEXT2; Chart.defaults.borderColor = GRID; Chart.defaults.font.family = "'JetBrains Mono',monospace";
-      const base = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
-      document.getElementById('stats-charts').innerHTML = `
-    <div class="cc"><div class="ct">Top Parties by Volume (Qtl)</div><div style="height:260px"><canvas id="ch-party"></canvas></div></div>
-    <div class="cc"><div class="ct">Rice Variety Distribution</div><div style="height:260px"><canvas id="ch-variety"></canvas></div></div>`;
-      const byParty = {}, byVariety = {};
-      orders.forEach(o => {
-        byParty[o.party] = (byParty[o.party] || 0) + o.qtl;
-        byVariety[o.variety] = (byVariety[o.variety] || 0) + o.qtl;
-      });
-      const topP = Object.entries(byParty).sort((a, b) => b[1] - a[1]).slice(0, 10);
-      const topV = Object.entries(byVariety).sort((a, b) => b[1] - a[1]);
-      const mkBar = (id, labels, data, color, horiz) => new Chart(document.getElementById(id), {
-        type: 'bar', data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 4, borderWidth: 0 }] },
-        options: { ...base, indexAxis: horiz ? 'y' : 'x', scales: { x: { grid: { color: horiz ? GRID : 'transparent' }, ticks: { font: { size: 10 } } }, y: { grid: { color: horiz ? 'transparent' : GRID }, ticks: { font: { size: 10 } } } } }
-      });
-      mkBar('ch-party', topP.map(p => p[0]), topP.map(p => p[1]), '#7a9ec9', true);
-      mkBar('ch-variety', topV.map(v => v[0]), topV.map(v => v[1]), ACCENT, false);
-    }
+      let url = '/api/reports/summary';
+      const params = [];
+      if (fromVal) params.push(`from=${fromVal}`);
+      if (toVal) params.push(`to=${toVal}`);
+      if (params.length) url += `?${params.join('&')}`;
 
-    /* ═══════════════════════════════════════════════════════════ DATA */
-    async function loadData() {
-      dataLoaded = true;
-      const res = await fetch('/api/db_info'), info = await res.json();
-      const container = document.getElementById('data-content');
-      if (info.status === 'not_installed') { container.innerHTML = `<div class="smsg"><h3 style="color:var(--yellow)">⚠ Run setup.bat then restart</h3></div>`; return }
-      if (info.status === 'file_not_found') { container.innerHTML = `<div class="smsg"><h3 style="color:var(--red)">⚠ .mdb not found</h3><p>Place <code>${esc(info.path || '')}</code> in the app folder.</p></div>`; return }
-      if (info.status === 'error') { container.innerHTML = `<div class="smsg"><h3 style="color:var(--red)">⚠ Error</h3><p><code>${esc(info.message || '')}</code></p></div>`; return }
-      const totalRows = info.tables.reduce((s, t) => s + (t.row_count || 0), 0);
-      const tc = t => { const tl = (t || '').toLowerCase(); if (tl.includes('int')) return '#6aaa7e'; if (tl.includes('float')) return '#d4956a'; if (tl.includes('date')) return '#9b8ec9'; return '#7a9ec9' };
-      container.innerHTML = `
-    <div class="db-hdr">
-      <div class="db-badge">File: <span>${esc(info.file)}</span></div>
-      <div class="db-badge">Tables: <span>${info.tables.length}</span></div>
-      <div class="db-badge">Total Rows: <span>${fmtN(totalRows)}</span></div>
-      <input class="db-srch" placeholder="🔍 Filter tables…" oninput="filterTables(this.value)"/>
-    </div>
-    <div class="tbl-cards">
-      ${info.tables.map((t, i) => `
-        <div class="tbl-card" id="tc-${i}" data-name="${esc(t.name.toLowerCase())}">
-          <div class="tbl-hdr" onclick="toggleTbl(${i},'${esc(t.name)}')">
-            <span>🗃</span>
-            <span class="tbl-nm">${esc(t.name)}</span>
-            <span class="tbl-cc">${t.columns.length} cols</span>
-            <span class="tbl-rc">${fmtN(t.row_count)} rows</span>
-            <span class="tbl-chv" id="tc-chv-${i}">▶</span>
-          </div>
-          <div class="tbl-body" id="tb-${i}">
-            <div class="qbar">
-              <span style="font-size:11px;color:var(--tx3)">Filter:</span>
-              <input class="qinp" id="qi-${i}" placeholder="search all columns…"/>
-              <span style="font-size:11px;color:var(--tx3)">Rows:</span>
-              <select class="qlim" id="ql-${i}"><option>30</option><option selected>100</option><option>500</option></select>
-              <button class="qbtn" onclick="runQuery(${i},'${esc(t.name)}')">▶ Run</button>
-            </div>
-            <div class="cpills">${t.columns.map(c => `<span class="cp"><span style="color:${tc(c.type)};font-size:9px;margin-right:2px">●</span>${esc(c.name)}</span>`).join('')}</div>
-            <div id="tg-${i}"><div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px">Click ▶ Run to load data</div></div>
-          </div>
-        </div>`).join('')}
-    </div>`;
-      info.tables.forEach((t, i) => {
-        const inp = document.getElementById('qi-' + i);
-        if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') runQuery(i, t.name) });
-      });
-    }
-    function filterTables(val) {
-      document.querySelectorAll('.tbl-card[data-name]').forEach(c => {
-        c.style.display = c.dataset.name.includes(val.toLowerCase()) ? '' : 'none';
-      });
-    }
-    function toggleTbl(i, name) {
-      const body = document.getElementById('tb-' + i), chev = document.getElementById('tc-chv-' + i);
-      const isOpen = body.classList.contains('open');
-      document.querySelectorAll('.tbl-body.open').forEach(b => b.classList.remove('open'));
-      document.querySelectorAll('.tbl-chv.open').forEach(c => c.classList.remove('open'));
-      if (!isOpen) {
-        body.classList.add('open'); chev.classList.add('open');
-        const g = document.getElementById('tg-' + i);
-        if (g && g.textContent.includes('Run')) runQuery(i, name);
+      document.getElementById('bi-pl-container').innerHTML = `
+        <div class="loading"><div class="spin"></div>Loading P&L Statement…</div>`;
+
+      try {
+        const res = await fetch(url);
+        biData = await res.json();
+        if (biData.error) {
+          document.getElementById('bi-pl-container').innerHTML = `
+            <div style="color:var(--red); padding:20px; font-weight:600;">Error: ${biData.error}</div>`;
+          return;
+        }
+
+        renderPlStatement();
+        renderIaTable();
+      } catch (err) {
+        document.getElementById('bi-pl-container').innerHTML = `
+          <div style="color:var(--red); padding:20px; font-weight:600;">Error loading report details.</div>`;
       }
     }
-    async function runQuery(i, name) {
-      const whereEl = document.getElementById('qi-' + i);
-      const limitEl = document.getElementById('ql-' + i);
-      const gridEl = document.getElementById('tg-' + i);
-      if (!gridEl) return;
-      const where = whereEl?.value || '', limit = parseInt(limitEl?.value || 100);
-      gridEl.innerHTML = '<div class="loading" style="padding:24px"><div class="spin"></div>Loading…</div>';
-      try {
-        const res = await fetch('/api/query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table: name, where, limit }) });
-        const data = await res.json();
-        if (data.error) { gridEl.innerHTML = `<div style="padding:12px;color:var(--red);font-family:var(--mono);font-size:12px">⚠ ${esc(data.error)}</div>`; return }
-        if (!data.rows?.length) { gridEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px">No rows found${where ? ' matching "' + esc(where) + '"' : ''}.</div>`; return }
-        const tc = t => { const tl = (t || '').toLowerCase(); if (tl.includes('int')) return '#2dc97a'; if (tl.includes('float')) return '#f0ae30'; if (tl.includes('date')) return '#a78bfa'; return '#4a8ff5' };
-        gridEl.innerHTML = `
-      <div class="dg-wrap"><table class="dg">
-        <thead><tr>${data.columns.map((c, ci) => `<th><span style="color:${tc(data.col_types[ci])};margin-right:4px;font-size:9px">●</span>${esc(c)}</th>`).join('')}</tr></thead>
-        <tbody>${data.rows.map(row => `<tr>${row.map(v => v === '' || v === null ? '<td class="null">—</td>' : `<td title="${esc(v)}">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table></div>
-      <div class="dg-footer">Showing ${fmtN(data.shown)} of ${fmtN(data.total)} rows${data.total > data.shown ? ' · <span style="color:var(--yellow)">increase limit to see more</span>' : ''}</div>`;
-      } catch (e) { gridEl.innerHTML = `<div style="padding:12px;color:var(--red);font-family:var(--mono);font-size:12px">⚠ ${e.message}</div>` }
+
+    function switchBiTab(tab) {
+      document.querySelectorAll('.bi-tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.bi-subpage').forEach(page => page.classList.remove('active'));
+
+      if (tab === 'pl') {
+        document.getElementById('btn-bi-pl').classList.add('active');
+        document.getElementById('bi-subpage-pl').classList.add('active');
+      } else {
+        document.getElementById('btn-bi-analyzer').classList.add('active');
+        document.getElementById('bi-subpage-analyzer').classList.add('active');
+        renderIaTable();
+      }
     }
 
-    /* ═══════════════════════════════════════════════════════════ IO EXPLORER */
-    let ioData2 = null, selIOId = null;
-
-    async function loadExplore() {
-      exploreLoaded = true;
-      const c = document.getElementById('explore-content');
-      c.innerHTML = `
-    <div class="io-sbar">
-      <input class="io-inp" id="io-srch" placeholder="Search by party, date, bill no…" onkeydown="if(event.key==='Enter')doIOSearch()"/>
-      <button class="io-btn" onclick="doIOSearch()">🔍 Search IO</button>
-      <span style="font-size:12px;color:var(--tx3)" id="io-cnt"></span>
-    </div>
-    <div id="io-tbl"><div class="loading"><div class="spin"></div>Loading IO table…</div></div>
-    <div id="io-rel" style="margin-top:16px"></div>`;
-      await doIOSearch();
-    }
-    async function doIOSearch() {
-      const val = (document.getElementById('io-srch')?.value || '').trim();
-      selIOId = null;
-      const tbl = document.getElementById('io-tbl');
-      const rel = document.getElementById('io-rel');
-      if (tbl) tbl.innerHTML = '<div class="loading"><div class="spin"></div>Searching…</div>';
-      if (rel) rel.innerHTML = '';
-      try {
-        const res = await fetch('/api/io_explore?search=' + encodeURIComponent(val));
-        const data = await res.json();
-        if (data.error) { tbl.innerHTML = `<div class="smsg"><h3 style="color:var(--red)">⚠ ${esc(data.error)}</h3></div>`; return }
-        ioData2 = data;
-        const lk = data.lookups || {};
-        const cnt = document.getElementById('io-cnt');
-        if (cnt) cnt.textContent = `${fmtN(data.io.total)} bills · ${fmtN(lk.party_count || 0)} parties · ${fmtN(lk.broker_count || 0)} brokers`;
-        renderIOTbl(data);
-      } catch (e) { if (tbl) tbl.innerHTML = `<div class="smsg"><h3 style="color:var(--red)">⚠ ${e.message}</h3></div>` }
-    }
-    function renderIOTbl(data) {
-      const tbl = document.getElementById('io-tbl');
-      if (!tbl) return;
-      const io = data.io;
-      if (!io.rows?.length) { tbl.innerHTML = '<div class="no-match">No IO records found.</div>'; return }
-      const showC = Math.min(io.columns.length, 14);
-      tbl.innerHTML = `<div class="io-panel">
-    <div class="io-pt">IO Table — Bills <span>Click any row to see Details + Journal</span></div>
-    <div class="dg-wrap" style="max-height:320px"><table class="dg">
-      <thead><tr>${io.columns.slice(0, showC).map(c => `<th>${esc(c)}</th>`).join('')}${io.columns.length > showC ? `<th>+${io.columns.length - showC}</th>` : ''}</tr></thead>
-      <tbody>${io.rows.map((row, ri) => {
-        const rowId = row[io.id_col_idx];
-        return `<tr class="io-clk${rowId === selIOId ? ' sel-row' : ''}" onclick="selectIO('${esc(rowId)}',${ri})">
-          ${row.slice(0, showC).map(v => v === '' || v === null ? '<td class="null">—</td>' : `<td title="${esc(v)}">${esc(v)}</td>`).join('')}
-          ${io.columns.length > showC ? '<td class="null">…</td>' : ''}
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>
-    <div class="dg-footer">${fmtN(io.total)} rows${io.total > 300 ? ' · showing first 300' : ''} · Click a row to load linked records</div>
-  </div>`;
-    }
-    function selectIO(io_id, ri) {
-      selIOId = io_id;
-      document.querySelectorAll('.io-clk').forEach((tr, i) => tr.classList.toggle('sel-row', i === ri));
-      fetchRelated2(io_id);
-    }
-    async function fetchRelated2(io_id) {
-      const wrap = document.getElementById('io-rel');
-      if (!wrap) return;
-      wrap.innerHTML = `<div class="loading" style="padding:24px"><div class="spin"></div>Loading related for IO #${esc(io_id)}…</div>`;
-      try {
-        const res = await fetch('/api/io_explore?io_id=' + encodeURIComponent(io_id));
-        const data = await res.json();
-        renderRelated2(data, io_id);
-      } catch (e) { wrap.innerHTML = `<div style="color:var(--red);padding:12px">⚠ ${e.message}</div>` }
-    }
-    function renderRelated2(data, io_id) {
-      const wrap = document.getElementById('io-rel'); if (!wrap) return;
-      const rel = data.related || {};
-      const tabs = Object.keys(rel);
-      const io = data.io || ioData2?.io;
-      let ioRow = null;
-      if (io) { const r = io.rows.find(row => row[io.id_col_idx] === io_id); if (r) ioRow = Object.fromEntries(io.columns.map((c, i) => [c, r[i]])) }
-      wrap.innerHTML = `<div class="io-panel">
-    <div class="io-pt">IO #${esc(io_id)} — Linked Records <span>${tabs.length} tables</span></div>
-    <div class="rtabs">
-      <div class="rtab active" onclick="swTab('merged')" id="rt-merged">🔗 Merged</div>
-      ${tabs.map(t => `<div class="rtab" onclick="swTab('${esc(t.replace(/ /g, '_'))}')" id="rt-${esc(t.replace(/ /g, '_'))}">${esc(t)} <span class="rtab-b">${rel[t].rows.length}</span></div>`).join('')}
-    </div>
-    <div class="rpanel active" id="rp-merged">
-      ${ioRow ? renderMerged2(ioRow, rel) : '<div class="no-match">IO header not loaded.</div>'}
-    </div>
-    ${tabs.map(t => {
-        const tb = rel[t]; return `<div class="rpanel" id="rp-${esc(t.replace(/ /g, '_'))}">
-      ${tb.rows.length === 0 ? `<div class="no-match">No rows in <strong>${esc(t)}</strong> via <em>${esc(tb.link_col)}</em></div>`
-            : `<div class="dg-wrap" style="max-height:280px"><table class="dg">
-        <thead><tr>${tb.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-        <tbody>${tb.rows.map(row => `<tr>${row.map(v => v === '' ? '<td class="null">—</td>' : `<td title="${esc(v)}">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table></div>
-      <div class="dg-footer">Linked via <strong>${esc(tb.link_col)}</strong> · ${tb.rows.length} row(s)</div>`}
-    </div>`}).join('')}
-  </div>`;
-    }
-    function renderMerged2(ioRow, rel) {
-      const hdr = `<div class="mv-sec"><div class="mv-sec-t">🧾 Bill Header</div><div class="mkv">${Object.entries(ioRow).map(([k, v]) => `<div class="mkvi"><div class="mkv-k">${esc(k)}</div><div class="mkv-v">${esc(v || '—')}</div></div>`).join('')}</div></div>`;
-      const sect = (label, emoji, tname) => {
-        const t = rel[tname]; if (!t || !t.rows.length) return '';
-        return `<div class="mv-sec"><div class="mv-sec-t">${emoji} ${esc(tname)}</div>
-      <div class="dg-wrap"><table class="dg">
-        <thead><tr>${t.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-        <tbody>${t.rows.map(row => `<tr>${row.map(v => v === '' ? '<td class="null">—</td>' : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table></div></div>`;
-      };
-      return `<div class="mv">${hdr}${sect('IO Details', '📦', 'IO Details')}${sect('IO Other Details', '🚚', 'IO Other Details')}${sect('IO DC', '📋', 'IO DC')}${sect('IO Receipts', '💰', 'IO Receipts')}${sect('Accounts', '🏢', 'Accounts')}${sect('Brokers', '🤝', 'Brokers')}</div>`;
-    }
-    function swTab(name) {
-      document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.rpanel').forEach(p => p.classList.remove('active'));
-      document.getElementById('rt-' + name)?.classList.add('active');
-      document.getElementById('rp-' + name)?.classList.add('active');
+    function resetBiFilters() {
+      document.getElementById('bi-from').value = '';
+      document.getElementById('bi-to').value = '';
+      loadBiStats();
     }
 
+    function renderPlStatement() {
+      if (!biData) return;
+      const s = biData.sales_summary;
+      const p = biData.purchases_summary;
+      const exp = biData.expenses;
+      const cap = biData.capital_expenditures;
+
+      // Build Rice Variety rows
+      let riceRowsHtml = '';
+      const rV = s.rice_varieties;
+      if (Object.keys(rV).length === 0) {
+        riceRowsHtml = `<tr><td class="pl-row-sub" colspan="2">No rice sales in this period</td><td class="pl-num pl-rate"></td><td class="pl-num"></td></tr>`;
+      } else {
+        Object.entries(rV).forEach(([name, val]) => {
+          riceRowsHtml += `
+            <tr>
+              <td class="pl-row-sub">${esc(name)}</td>
+              <td class="pl-num">${fmt(val.qtl, 2)} Qtl</td>
+              <td class="pl-num pl-rate">@ ${fmt(val.rate, 2)}</td>
+              <td class="pl-num">${fmt(val.amount, 2)}</td>
+            </tr>`;
+        });
+      }
+
+      // Build Paddy Variety rows
+      let paddyRowsHtml = '';
+      const pV = p.paddy_varieties;
+      if (Object.keys(pV).length === 0) {
+        paddyRowsHtml = `<tr><td class="pl-row-sub" colspan="2">No paddy purchases in this period</td><td class="pl-num pl-rate"></td><td class="pl-num"></td></tr>`;
+      } else {
+        Object.entries(pV).forEach(([name, val]) => {
+          paddyRowsHtml += `
+            <tr>
+              <td class="pl-row-sub">${esc(name)}</td>
+              <td class="pl-num">${fmt(val.qtl, 2)} Qtl</td>
+              <td class="pl-num pl-rate">@ ${fmt(val.rate, 2)}</td>
+              <td class="pl-num">${fmt(val.amount, 2)}</td>
+            </tr>`;
+        });
+      }
+
+      const html = `
+        <table class="pl-table">
+          <thead>
+            <tr>
+              <th>Particulars</th>
+              <th class="pl-num">Quantity</th>
+              <th class="pl-num">Avg Rate</th>
+              <th class="pl-num">Amount (${CURR})</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- REVENUE FROM OPERATIONS -->
+            <tr class="pl-row-hdr">
+              <td colspan="4">REVENUE FROM OPERATIONS (SALES)</td>
+            </tr>
+            ${riceRowsHtml}
+            <tr>
+              <td class="pl-row-sub">Broken Rice</td>
+              <td class="pl-num">${fmt(s.broken_rice.qtl, 2)} Qtl</td>
+              <td class="pl-num pl-rate">@ ${fmt(s.broken_rice.rate, 2)}</td>
+              <td class="pl-num">${fmt(s.broken_rice.amount, 2)}</td>
+            </tr>
+            <tr>
+              <td class="pl-row-sub">Bran</td>
+              <td class="pl-num">${fmt(s.bran.qtl, 2)} Qtl</td>
+              <td class="pl-num pl-rate">@ ${fmt(s.bran.rate, 2)}</td>
+              <td class="pl-num">${fmt(s.bran.amount, 2)}</td>
+            </tr>
+            <tr>
+              <td class="pl-row-sub">Husk</td>
+              <td class="pl-num">${fmt(s.husk.qtl, 2)} Qtl</td>
+              <td class="pl-num pl-rate">@ ${fmt(s.husk.rate, 2)}</td>
+              <td class="pl-num">${fmt(s.husk.amount, 2)}</td>
+            </tr>
+            <tr>
+              <td class="pl-row-sub">Other Sales</td>
+              <td class="pl-num">${fmt(s.others.qtl, 2)} Qtl</td>
+              <td class="pl-num pl-rate">@ ${fmt(s.others.rate, 2)}</td>
+              <td class="pl-num">${fmt(s.others.amount, 2)}</td>
+            </tr>
+            <tr class="pl-row-total">
+              <td>Total Revenue (A)</td>
+              <td colspan="2"></td>
+              <td class="pl-num">${fmt(s.total_amount, 2)}</td>
+            </tr>
+
+            <!-- DIRECT TRADING COSTS -->
+            <tr class="pl-row-hdr" style="border-top: 15px solid transparent;">
+              <td colspan="4">DIRECT TRADING COSTS</td>
+            </tr>
+            ${paddyRowsHtml}
+            <tr>
+              <td class="pl-row-sub">Gunnies & Other Purchases</td>
+              <td class="pl-num">${fmt(p.others.qtl, 2)} Qtl</td>
+              <td class="pl-num pl-rate">@ ${fmt(p.others.rate, 2)}</td>
+              <td class="pl-num">${fmt(p.others.amount, 2)}</td>
+            </tr>
+            <tr>
+              <td class="pl-row-sub">Direct Freight (Paddy Freight & Lorry Advance)</td>
+              <td colspan="2"></td>
+              <td class="pl-num">${fmt(exp.paddy_freight, 2)}</td>
+            </tr>
+            <tr>
+              <td class="pl-row-sub">Direct Labor (Labour Charges & Hamali)</td>
+              <td colspan="2"></td>
+              <td class="pl-num">${fmt(exp.direct_labor, 2)}</td>
+            </tr>
+            <tr class="pl-row-total">
+              <td>Total Direct Costs (B)</td>
+              <td colspan="2"></td>
+              <td class="pl-num">${fmt(p.total_amount, 2)}</td>
+            </tr>
+
+            <!-- NET TRADING CONTRIBUTION -->
+            <tr class="pl-row-net">
+              <td>NET TRADING CONTRIBUTION (A - B)</td>
+              <td colspan="2"></td>
+              <td class="pl-num">${fmt(biData.net_trading_contribution, 2)}</td>
+            </tr>
+
+            <!-- CAPITAL EXPENDITURES (SEPARATE SECTION) -->
+            <tr class="pl-row-capex-hdr" style="border-top: 20px solid transparent;">
+              <td colspan="4">CAPITAL EXPENDITURES (SEPARATE OUTFLOWS)</td>
+            </tr>
+            <tr>
+              <td class="pl-row-sub">Construction</td>
+              <td colspan="2"></td>
+              <td class="pl-num">${fmt(cap.construction, 2)}</td>
+            </tr>
+            <tr>
+              <td class="pl-row-sub">New Godown</td>
+              <td colspan="2"></td>
+              <td class="pl-num">${fmt(cap.new_godown, 2)}</td>
+            </tr>
+            <tr class="pl-row-total">
+              <td>Total Capital Outflows</td>
+              <td colspan="2"></td>
+              <td class="pl-num">${fmt(cap.construction + cap.new_godown, 2)}</td>
+            </tr>
+          </tbody>
+        </table>`;
+
+      document.getElementById('bi-pl-container').innerHTML = html;
+    }
+
+    function setIaMode(mode) {
+      biMode = mode;
+      document.getElementById('ia-mode-sales').classList.toggle('active', mode === 'sales');
+      document.getElementById('ia-mode-purchases').classList.toggle('active', mode === 'purchases');
+      renderIaTable();
+    }
+
+    function setIaGroup(group) {
+      biGroup = group;
+      document.getElementById('ia-group-party').classList.toggle('active', group === 'party');
+      document.getElementById('ia-group-broker').classList.toggle('active', group === 'broker');
+      renderIaTable();
+    }
+
+    function sortIa(col) {
+      if (biSortCol === col) {
+        biSortDesc = !biSortDesc;
+      } else {
+        biSortCol = col;
+        biSortDesc = true;
+      }
+      renderIaTable();
+    }
+
+    function renderIaTable() {
+      if (!biData) return;
+
+      const searchVal = document.getElementById('ia-search-input').value.toLowerCase().trim();
+      const rawList = biGroup === 'party' ? biData.party_summary : biData.broker_summary;
+
+      // Filter list
+      let filtered = rawList.filter(item => {
+        const name = (item.name || '').toLowerCase();
+        if (searchVal && !name.includes(searchVal)) return false;
+
+        // Filter out zero entries for active mode
+        if (biMode === 'sales' && item.sales_count === 0) return false;
+        if (biMode === 'purchases' && item.purchases_count === 0) return false;
+
+        return true;
+      });
+
+      // Sort list
+      filtered.sort((a, b) => {
+        let valA, valB;
+        if (biSortCol === 'name') {
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+        } else if (biSortCol === 'count') {
+          valA = biMode === 'sales' ? a.sales_count : a.purchases_count;
+          valB = biMode === 'sales' ? b.sales_count : b.purchases_count;
+        } else if (biSortCol === 'qtl') {
+          valA = biMode === 'sales' ? a.sales_qtl : a.purchases_qtl;
+          valB = biMode === 'sales' ? b.sales_qtl : b.purchases_qtl;
+        } else if (biSortCol === 'rate') {
+          const qtlA = biMode === 'sales' ? a.sales_qtl : a.purchases_qtl;
+          const amtA = biMode === 'sales' ? a.sales_amount : a.purchases_amount;
+          const qtlB = biMode === 'sales' ? b.sales_qtl : b.purchases_qtl;
+          const amtB = biMode === 'sales' ? b.sales_amount : b.purchases_amount;
+          valA = qtlA > 0 ? amtA / qtlA : 0;
+          valB = qtlB > 0 ? amtB / qtlB : 0;
+        } else { // amount
+          valA = biMode === 'sales' ? a.sales_amount : a.purchases_amount;
+          valB = biMode === 'sales' ? b.sales_amount : b.purchases_amount;
+        }
+
+        if (valA < valB) return biSortDesc ? 1 : -1;
+        if (valA > valB) return biSortDesc ? -1 : 1;
+        return 0;
+      });
+
+      // Build Headers
+      const hdrName = biGroup === 'party' ? 'Party Name' : 'Broker Name';
+      const arrow = biSortDesc ? '▼' : '▲';
+      const sortIndicator = col => biSortCol === col ? ` <span style="font-size:10px">${arrow}</span>` : '';
+
+      const headersHtml = `
+        <th class="sort" onclick="sortIa('name')">${hdrName}${sortIndicator('name')}</th>
+        <th class="sort num" onclick="sortIa('count')">Transactions${sortIndicator('count')}</th>
+        <th class="sort num" onclick="sortIa('qtl')">Total Quintals${sortIndicator('qtl')}</th>
+        <th class="sort num" onclick="sortIa('rate')">Avg Rate${sortIndicator('rate')}</th>
+        <th class="sort num" onclick="sortIa('amount')">Total Amount (${CURR})${sortIndicator('amount')}</th>`;
+
+      document.getElementById('ia-table-headers').innerHTML = headersHtml;
+
+      // Build Body
+      let bodyHtml = '';
+      if (filtered.length === 0) {
+        bodyHtml = `<tr><td colspan="5" class="td" style="text-align:center; color:var(--tx3)">No matching results found.</td></tr>`;
+      } else {
+        filtered.forEach(item => {
+          const count = biMode === 'sales' ? item.sales_count : item.purchases_count;
+          const qtl = biMode === 'sales' ? item.sales_qtl : item.purchases_qtl;
+          const amt = biMode === 'sales' ? item.sales_amount : item.purchases_amount;
+          const rate = qtl > 0 ? amt / qtl : 0;
+
+          bodyHtml += `
+            <tr>
+              <td class="td font-weight:600">${esc(item.name)}</td>
+              <td class="td num">${fmtN(count)}</td>
+              <td class="td num" style="font-family:var(--mono)">${fmt(qtl, 2)} Qtl</td>
+              <td class="td num pl-rate" style="font-family:var(--mono)">@ ${fmt(rate, 2)}</td>
+              <td class="td num" style="font-family:var(--mono); font-weight:600">${fmt(amt, 2)}</td>
+            </tr>`;
+        });
+      }
+
+      document.getElementById('ia-table-body').innerHTML = bodyHtml;
+    }
+  </script>
+  {% endif %}
+
+  <script>
     /* INIT */
     // Measure full top area (sticky title + filter bar) so table max-height is correct
     function setPhHeight() {
@@ -3678,14 +4120,14 @@
         btn.style.borderColor = 'var(--accent)';
         btn.style.color = '#fff';
         btn.style.fontWeight = '600';
-        
+
         btn.innerHTML = `
           <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:4px;vertical-align:middle;">
             <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
           </svg>
           <span style="vertical-align:middle;">${needsBackendRestart ? 'Restart to Update' : 'Click to Update'}</span>
         `;
-        
+
         btn.onclick = () => triggerUpdateFlow(latestVersion, needsBackendRestart, btn);
         container.insertBefore(btn, container.firstChild);
       });
@@ -3700,7 +4142,7 @@
           <span style="vertical-align:middle;">Updating...</span>
         `;
       });
-      
+
       fetch('/api/update/apply', { method: 'POST' })
         .then(res => res.json())
         .then(data => {
@@ -3750,7 +4192,7 @@
         <div class="spin" style="width: 28px; height: 28px; border: 3px solid var(--bdr2); border-top-color: var(--accent); border-radius: 50%;"></div>
       `;
       document.body.appendChild(overlay);
-      
+
       let attempts = 0;
       const interval = setInterval(() => {
         attempts++;

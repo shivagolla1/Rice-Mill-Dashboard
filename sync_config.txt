@@ -1,0 +1,23 @@
+# Rice Mill Dashboard — Local Sync Agent Configuration (Windows 7 PC)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Full path to your local .mdb database file on PC or USB drive
+MDB_PATH = D:\SGRI\SGRI 2025-2026.mdb
+
+# Your Railway cloud app URL (e.g. https://rice-mill-dashboard.up.railway.app)
+CLOUD_URL = https://your-app.up.railway.app
+
+# Secret token matching your Railway environment variable SYNC_SECRET_TOKEN
+SYNC_SECRET_TOKEN = RiceMillSyncSecretToken2026!
+
+# Secret encryption key matching your Railway environment variable ENCRYPTION_KEY
+ENCRYPTION_KEY = RiceMillDashboardDefaultEncryptionKey2026!
+
+# Sync Mode Options:
+# AUTO   -> Runs in background, automatically uploads whenever file is modified or USB inserted
+# TIMER  -> Syncs on fixed interval (every 30 seconds)
+# MANUAL -> Syncs only when double-clicking sync_now.bat
+SYNC_MODE = AUTO
+
+# Check interval in seconds for AUTO/TIMER mode
+CHECK_INTERVAL_SEC = 30

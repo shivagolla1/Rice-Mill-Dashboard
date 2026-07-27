@@ -1,0 +1,10 @@
+--- CRASH LOG 2026-07-16 11:20:30 ---
+Traceback (most recent call last):
+  File "app.py", line 1653, in <module>
+    app.run(debug=False, port=5000, host='0.0.0.0')
+  File "flask\app.py", line 620, in run
+  File "flask\cli.py", line 759, in show_server_banner
+  File "click\utils.py", line 319, in echo
+OSError: [Errno 22] Invalid argument
+
+

@@ -4,13 +4,61 @@ Rice Mill Dashboard
 - Stocks:  reads from .mdb (Godowns)
 - Data/Explore: full table browser + IO explorer
 """
-from flask import Flask, jsonify, render_template, request, redirect, url_for
-import os, csv, re, io, json, subprocess, time, threading, shutil
+import sys, os, traceback
+
+# Global crash logger for troubleshooting startup issues
+try:
+    if getattr(sys, 'frozen', False):
+        EXE_DIR = os.path.dirname(sys.executable)
+    else:
+        EXE_DIR = os.path.dirname(os.path.abspath(__file__))
+    log_path = os.path.join(EXE_DIR, "crash_log.txt")
+except Exception:
+    log_path = "crash_log.txt"
+
+def write_crash(msg):
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            from datetime import datetime
+            f.write(f"--- CRASH LOG {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+            f.write(msg + "\n\n")
+    except:
+        pass
+
+sys.excepthook = lambda exctype, value, tb: write_crash("".join(traceback.format_exception(exctype, value, tb)))
+
+# Prevent Flask/Click crashes in PyInstaller --noconsole mode
+class DummyWriter:
+    def write(self, x): pass
+    def flush(self): pass
+
+if sys.stdout is None or not hasattr(sys.stdout, 'write'):
+    sys.stdout = DummyWriter()
+if sys.stderr is None or not hasattr(sys.stderr, 'write'):
+    sys.stderr = DummyWriter()
+
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session
+import os, csv, re, io, json, subprocess, time, threading, shutil, gzip
 from datetime import datetime, date as dobj
 
+# Support PyInstaller standalone execution
+if getattr(sys, 'frozen', False):
+    BASE = sys._MEIPASS
+else:
+    BASE = os.path.dirname(os.path.abspath(__file__))
+
 app  = Flask(__name__, template_folder='templates', static_folder='static')
-BASE = os.path.dirname(os.path.abspath(__file__))
+app.secret_key = os.environ.get('SESSION_SECRET', 'RiceMillDashboardSessionSecret2026!')
 VERSION = "1.1.0"
+
+# Import Crypto & Auth helpers
+import crypto_utils
+import auth
+
+# ── FEATURE FLAGS (Hardcode to True/False for client distribution packages) ──
+SHOW_STOCKS = os.environ.get('SHOW_STOCKS', 'False').strip().lower() in ('true', '1', 'yes')
+SHOW_BI_REPORTS = os.environ.get('SHOW_BI_REPORTS', 'False').strip().lower() in ('true', '1', 'yes')
+
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 def load_config():
@@ -18,12 +66,11 @@ def load_config():
         'MDB_FILE': '',
         'INDUSTRY_NAME': 'Rice Mill',
         'INDUSTRY_ADDRESS': '',
-        'CURRENCY_SYMBOL': 'Rs.',
         'APP_TITLE': '',
         'INDUSTRY_LOGO': 'static/logo.jpg',
         'ENABLE_UPDATES': 'False'
     }
-    p = os.path.join(BASE,'config.txt')
+    p = os.path.join(EXE_DIR,'config.txt')
     if not os.path.exists(p): return d
     with open(p, encoding='utf-8') as f:
         for line in f:
@@ -37,7 +84,7 @@ def load_config():
     return d
 
 def save_config(mdb_path):
-    p = os.path.join(BASE, 'config.txt')
+    p = os.path.join(EXE_DIR, 'config.txt')
     lines = []
     has_mdb_file = False
     if os.path.exists(p):
@@ -64,7 +111,7 @@ def is_first_run():
 # ── SAVE FULL CONFIG ──────────────────────────────────────────────────────────
 def save_full_config(data: dict):
     """Write all config keys to config.txt preserving comments."""
-    p = os.path.join(BASE, 'config.txt')
+    p = os.path.join(EXE_DIR, 'config.txt')
     # Build a key->line map from existing file to preserve comments
     lines = []
     written = set()
@@ -95,12 +142,12 @@ def find_mdb():
     """
     configured = CFG.get('MDB_FILE', '').strip()
     if configured:
-        full = configured if os.path.isabs(configured) else os.path.join(BASE, configured)
+        full = configured if os.path.isabs(configured) else os.path.join(EXE_DIR, configured)
         if os.path.exists(full):
             return full
 
     # Auto-detect: look in data/ first, then root
-    for search_dir in [os.path.join(BASE, 'data'), BASE]:
+    for search_dir in [os.path.join(EXE_DIR, 'data'), EXE_DIR]:
         if not os.path.isdir(search_dir):
             continue
         files = [f for f in os.listdir(search_dir) if f.lower().endswith('.mdb')]
@@ -110,7 +157,7 @@ def find_mdb():
             return os.path.join(search_dir, files[0])
 
     # Nothing found — return the configured path anyway so error messages are clear
-    return configured if configured and os.path.isabs(configured) else os.path.join(BASE, configured) if configured else os.path.join(BASE, 'data', 'Database.mdb')
+    return configured if configured and os.path.isabs(configured) else os.path.join(EXE_DIR, configured) if configured else os.path.join(EXE_DIR, 'data', 'Database.mdb')
 
 MDB_PATH = find_mdb()
 
@@ -580,6 +627,249 @@ def api_journal_all():
         return jsonify({'error': str(e)})
 
 
+@app.route('/api/reports/summary')
+def api_reports_summary():
+    """Simplified P&L report and interactive Broker/Party analyzer."""
+    if not SHOW_BI_REPORTS:
+        return jsonify({'error': 'BI Reports are disabled.'}), 403
+    if not os.path.exists(MDB_PATH):
+        return jsonify({'error': 'file_not_found'})
+    try:
+        from_date_str = request.args.get('from', '')
+        to_date_str = request.args.get('to', '')
+
+        from_date = to_date(from_date_str) if from_date_str else None
+        to_date_val = to_date(to_date_str) if to_date_str else None
+
+        sales = get_transactions('sales')
+        purchases = get_transactions('purchases')
+
+        if isinstance(sales, dict) and 'error' in sales:
+            return jsonify(sales)
+        if isinstance(purchases, dict) and 'error' in purchases:
+            return jsonify(purchases)
+
+        # 1. Sales variety breakdown
+        sales_rice = {}
+        sales_broken = {'qtl': 0.0, 'amount': 0.0}
+        sales_bran = {'qtl': 0.0, 'amount': 0.0}
+        sales_husk = {'qtl': 0.0, 'amount': 0.0}
+        sales_others = {'qtl': 0.0, 'amount': 0.0}
+
+        # 2. Purchases variety breakdown
+        purch_paddy = {}
+        purch_others = {'qtl': 0.0, 'amount': 0.0}
+
+        # 3. Party & Broker stats
+        party_stats = {}
+        broker_stats = {}
+
+        def get_stats_node():
+            return {
+                'sales_qtl': 0.0, 'sales_amount': 0.0, 'sales_count': 0,
+                'purchases_qtl': 0.0, 'purchases_amount': 0.0, 'purchases_count': 0
+            }
+
+        # Process sales
+        for tx in sales:
+            tx_date = to_date(tx['loaded_raw'])
+            if tx_date:
+                if from_date and tx_date < from_date: continue
+                if to_date_val and tx_date > to_date_val: continue
+
+            party = tx['party'].strip() or '—'
+            broker = tx['broker'].strip() or '—'
+
+            if party not in party_stats: party_stats[party] = get_stats_node()
+            party_stats[party]['sales_amount'] += tx['amount']
+            party_stats[party]['sales_qtl'] += tx['qtl']
+            party_stats[party]['sales_count'] += 1
+
+            if broker not in broker_stats: broker_stats[broker] = get_stats_node()
+            broker_stats[broker]['sales_amount'] += tx['amount']
+            broker_stats[broker]['sales_qtl'] += tx['qtl']
+            broker_stats[broker]['sales_count'] += 1
+
+            details = tx.get('details', [])
+            if not details:
+                details = [{
+                    'variety': tx.get('variety', '—'),
+                    'qtl': tx.get('qtl', 0.0),
+                    'amount': tx.get('amount', 0.0)
+                }]
+
+            for d in details:
+                var = d['variety'].strip() or '—'
+                v_lower = var.lower()
+                qtl = d['qtl']
+                amt = d['amount']
+
+                if 'broken' in v_lower:
+                    sales_broken['qtl'] += qtl
+                    sales_broken['amount'] += amt
+                elif 'bran' in v_lower:
+                    sales_bran['qtl'] += qtl
+                    sales_bran['amount'] += amt
+                elif 'husk' in v_lower:
+                    sales_husk['qtl'] += qtl
+                    sales_husk['amount'] += amt
+                elif 'rice' in v_lower:
+                    if var not in sales_rice: sales_rice[var] = {'qtl': 0.0, 'amount': 0.0}
+                    sales_rice[var]['qtl'] += qtl
+                    sales_rice[var]['amount'] += amt
+                else:
+                    sales_others['qtl'] += qtl
+                    sales_others['amount'] += amt
+
+        # Process purchases
+        for tx in purchases:
+            tx_date = to_date(tx['loaded_raw'])
+            if tx_date:
+                if from_date and tx_date < from_date: continue
+                if to_date_val and tx_date > to_date_val: continue
+
+            party = tx['party'].strip() or '—'
+            broker = tx['broker'].strip() or '—'
+
+            if party not in party_stats: party_stats[party] = get_stats_node()
+            party_stats[party]['purchases_amount'] += tx['amount']
+            party_stats[party]['purchases_qtl'] += tx['qtl']
+            party_stats[party]['purchases_count'] += 1
+
+            if broker not in broker_stats: broker_stats[broker] = get_stats_node()
+            broker_stats[broker]['purchases_amount'] += tx['amount']
+            broker_stats[broker]['purchases_qtl'] += tx['qtl']
+            broker_stats[broker]['purchases_count'] += 1
+
+            details = tx.get('details', [])
+            if not details:
+                details = [{
+                    'variety': tx.get('variety', '—'),
+                    'qtl': tx.get('qtl', 0.0),
+                    'amount': tx.get('amount', 0.0)
+                }]
+
+            for d in details:
+                var = d['variety'].strip() or '—'
+                v_lower = var.lower()
+                qtl = d['qtl']
+                amt = d['amount']
+
+                if 'paddy' in v_lower:
+                    if var not in purch_paddy: purch_paddy[var] = {'qtl': 0.0, 'amount': 0.0}
+                    purch_paddy[var]['qtl'] += qtl
+                    purch_paddy[var]['amount'] += amt
+                else:
+                    purch_others['qtl'] += qtl
+                    purch_others['amount'] += amt
+
+        # Process expenses from Journal table
+        j_cols, _, j_rows = get_cached_table('Journal')
+        j_dr_i = col_i(j_cols, ['dr account'])
+        j_cr_i = col_i(j_cols, ['cr account'])
+        j_amt_i = col_i(j_cols, ['amount'])
+        j_date_i = col_i(j_cols, ['transaction date', 'date'])
+
+        paddy_freight = 0.0
+        direct_labor = 0.0
+        construction = 0.0
+        new_godown = 0.0
+
+        for r in j_rows:
+            dt = ss(r[j_date_i]) if j_date_i is not None else ''
+            tx_date = to_date(dt)
+            if tx_date:
+                if from_date and tx_date < from_date: continue
+                if to_date_val and tx_date > to_date_val: continue
+
+            dr = ss(r[j_dr_i]).strip()
+            cr = ss(r[j_cr_i]).strip()
+            amt = unscale(r[j_amt_i])
+
+            if cr == 'Paddy Frieght' or dr == 'Paddy Lorry Advance':
+                paddy_freight += amt
+            elif cr in ('Labour Charges', 'Hamali'):
+                direct_labor += amt
+            elif cr == 'Construction':
+                construction += amt
+            elif cr == 'New Godown':
+                new_godown += amt
+
+        # Post-process variety stats to include average rate and round values
+        def finalize_variety_map(m):
+            out = {}
+            for k, v in m.items():
+                q = round(v['qtl'], 2)
+                a = round(v['amount'], 2)
+                rate = round(a / q, 2) if q > 0 else 0.0
+                out[k] = {'qtl': q, 'amount': a, 'rate': rate}
+            return out
+
+        sales_rice_final = finalize_variety_map(sales_rice)
+        purch_paddy_final = finalize_variety_map(purch_paddy)
+
+        sales_broken_final = {'qtl': round(sales_broken['qtl'], 2), 'amount': round(sales_broken['amount'], 2), 'rate': round(sales_broken['amount'] / sales_broken['qtl'], 2) if sales_broken['qtl'] > 0 else 0.0}
+        sales_bran_final = {'qtl': round(sales_bran['qtl'], 2), 'amount': round(sales_bran['amount'], 2), 'rate': round(sales_bran['amount'] / sales_bran['qtl'], 2) if sales_bran['qtl'] > 0 else 0.0}
+        sales_husk_final = {'qtl': round(sales_husk['qtl'], 2), 'amount': round(sales_husk['amount'], 2), 'rate': round(sales_husk['amount'] / sales_husk['qtl'], 2) if sales_husk['qtl'] > 0 else 0.0}
+        sales_others_final = {'qtl': round(sales_others['qtl'], 2), 'amount': round(sales_others['amount'], 2), 'rate': round(sales_others['amount'] / sales_others['qtl'], 2) if sales_others['qtl'] > 0 else 0.0}
+
+        purch_others_final = {'qtl': round(purch_others['qtl'], 2), 'amount': round(purch_others['amount'], 2), 'rate': round(purch_others['amount'] / purch_others['qtl'], 2) if purch_others['qtl'] > 0 else 0.0}
+
+        # Calculate totals
+        total_revenue = sum(v['amount'] for v in sales_rice_final.values()) + sales_broken_final['amount'] + sales_bran_final['amount'] + sales_husk_final['amount'] + sales_others_final['amount']
+        total_direct_costs = sum(v['amount'] for v in purch_paddy_final.values()) + purch_others_final['amount'] + paddy_freight + direct_labor
+        net_contribution = total_revenue - total_direct_costs
+
+        # Finalize party and broker list
+        def finalize_summary_list(stats_map):
+            lst = []
+            for name, s in stats_map.items():
+                if name == '—': continue
+                lst.append({
+                    'name': name,
+                    'sales_qtl': round(s['sales_qtl'], 2),
+                    'sales_amount': round(s['sales_amount'], 2),
+                    'sales_count': s['sales_count'],
+                    'purchases_qtl': round(s['purchases_qtl'], 2),
+                    'purchases_amount': round(s['purchases_amount'], 2),
+                    'purchases_count': s['purchases_count']
+                })
+            return lst
+
+        res = {
+            'sales_summary': {
+                'rice_varieties': sales_rice_final,
+                'broken_rice': sales_broken_final,
+                'bran': sales_bran_final,
+                'husk': sales_husk_final,
+                'others': sales_others_final,
+                'total_amount': round(total_revenue, 2)
+            },
+            'purchases_summary': {
+                'paddy_varieties': purch_paddy_final,
+                'others': purch_others_final,
+                'total_amount': round(total_direct_costs, 2)
+            },
+            'expenses': {
+                'paddy_freight': round(paddy_freight, 2),
+                'direct_labor': round(direct_labor, 2)
+            },
+            'capital_expenditures': {
+                'construction': round(construction, 2),
+                'new_godown': round(new_godown, 2)
+            },
+            'net_trading_contribution': round(net_contribution, 2),
+            'broker_summary': finalize_summary_list(broker_stats),
+            'party_summary': finalize_summary_list(party_stats)
+        }
+
+        return jsonify(res)
+
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+
+
 @app.route('/api/journal/<io_id>')
 def api_journal(io_id):
     """All Journal entries for one IO ID with days-to-pay calculation."""
@@ -673,6 +963,8 @@ ALLOWED_PREFIXES = ('paddy', 'raw rice')
 @app.route('/api/stocks/trial-balance')
 def api_stocks_trial_balance():
     """Schedule Trial Balance grouped by Variety → Type+Mode."""
+    if not SHOW_STOCKS:
+        return jsonify({'error': 'Stocks page is disabled.'}), 403
     if not os.path.exists(MDB_PATH):
         return jsonify({'error': 'file_not_found'})
     try:
@@ -766,129 +1058,6 @@ def api_stocks_trial_balance():
         return jsonify({'error': str(e)})
 
 
-# ── DATA BROWSER ──────────────────────────────────────────────────────────────
-@app.route('/api/db_info')
-def api_db_info():
-    if not os.path.exists(MDB_PATH):
-        return jsonify({'status':'file_not_found','path':MDB_PATH,'tables':[]})
-    try:
-        db     = mdb_open(MDB_PATH)
-        tables = mdb_tables(db)
-        result = []
-        for t in tables:
-            try:
-                cols, types, rows = mdb_read(db, t)
-                result.append({'name':t,'columns':[{'name':c,'type':tp}
-                    for c,tp in zip(cols,types)],'row_count':len(rows)})
-            except Exception as e:
-                result.append({'name':t,'columns':[],'row_count':0,'error':str(e)})
-        return jsonify({'status':'ok','tables':result,'file':CFG['MDB_FILE']})
-    except ImportError:
-        return jsonify({'status':'not_installed','tables':[]})
-    except Exception as e:
-        return jsonify({'status':'error','message':str(e),'tables':[]})
-
-
-@app.route('/api/query', methods=['POST'])
-def api_query():
-    body  = request.get_json(silent=True) or {}
-    tname = body.get('table','')
-    limit = min(int(body.get('limit',100)),1000)
-    where = body.get('where','').strip().lower()
-    if not tname: return jsonify({'error':'No table specified'})
-    if not os.path.exists(MDB_PATH): return jsonify({'error':'file_not_found'})
-    try:
-        db     = mdb_open(MDB_PATH)
-        tables = mdb_tables(db)
-        if tname not in tables: return jsonify({'error':f'Table "{tname}" not found'})
-        cols, types, rows = mdb_read(db, tname)
-        if where:
-            rows = [r for r in rows if any(where in ss(v).lower() for v in r)]
-        total = len(rows); rows = rows[:limit]
-        return jsonify({'table':tname,'columns':cols,'col_types':types,
-                        'rows':[[ss(v) for v in r] for r in rows],
-                        'total':total,'shown':len(rows)})
-    except ImportError:
-        return jsonify({'error':'not_installed'})
-    except Exception as e:
-        return jsonify({'error':str(e)})
-
-
-@app.route('/api/io_explore')
-def api_io_explore():
-    search = request.args.get('search','').strip().lower()
-    io_id  = request.args.get('io_id','').strip()
-    if not os.path.exists(MDB_PATH): return jsonify({'error':'file_not_found'})
-    try:
-        db     = mdb_open(MDB_PATH)
-        tables = mdb_tables(db)
-
-        def rd(t):
-            if t not in tables: return [],[], []
-            return mdb_read(db, t)
-
-        def lkp(cols, rows, key_hints, val_hints):
-            ki = col_i(cols, key_hints) or 0
-            vi = col_i(cols, val_hints) or (1 if len(cols)>1 else 0)
-            return {ss(r[ki]):ss(r[vi]) for r in rows}
-
-        ac_cols,_,ac_rows = rd('Accounts')
-        br_cols,_,br_rows = rd('Brokers')
-        tp_cols,_,tp_rows = rd('Type')
-        party_lkp  = lkp(ac_cols, ac_rows, ['id','acno','accode'], ['name','account','acname'])
-        broker_lkp = lkp(br_cols, br_rows, ['id','brno','brcode'], ['name','broker'])
-        type_lkp   = lkp(tp_cols, tp_rows, ['id','typeno'],        ['name','type','description'])
-
-        io_cols,io_types,io_rows = rd('IO')
-        id_i  = col_i(io_cols,['io id','ioid','id']) or 0
-        pi    = col_i(io_cols,['party','acno','account'])
-        bi    = col_i(io_cols,['broker','brno'])
-        ti    = col_i(io_cols,['type'])
-
-        enrich_cols  = list(io_cols)+(['Party Name'] if pi is not None else [])+\
-                                     (['Broker Name'] if bi is not None else [])+\
-                                     (['Type Name']   if ti is not None else [])
-        enrich_rows = []
-        for r in io_rows:
-            row = list(r)
-            if pi is not None: row.append(party_lkp.get(ss(r[pi]),ss(r[pi])))
-            if bi is not None: row.append(broker_lkp.get(ss(r[bi]),ss(r[bi])))
-            if ti is not None: row.append(type_lkp.get(ss(r[ti]),ss(r[ti])))
-            enrich_rows.append(row)
-
-        if search:
-            enrich_rows = [r for r in enrich_rows if any(search in ss(v).lower() for v in r)]
-
-        io_data = {'columns':enrich_cols,'col_types':io_types+['str','str','str'],
-                   'rows':[[ss(v) for v in r] for r in enrich_rows[:300]],
-                   'total':len(enrich_rows),'id_col_idx':id_i}
-
-        related = {}
-        if io_id:
-            for tname in ['IO Details','IO Other Details','IO DC',
-                          'IO Receipts','IODetailsTaxValues','IO NOW','Accounts','Brokers']:
-                cols,types,rows = rd(tname)
-                if not cols: continue
-                li = col_i(cols,['ioid','io id','io_id','iono','io no']) or 0
-                is_master = tname in ('Accounts','Brokers')
-                matched = rows if is_master else [r for r in rows if ss(r[li])==io_id]
-                related[tname] = {
-                    'columns':cols,'col_types':types,
-                    'rows':[[ss(v) for v in r] for r in matched[:50]],
-                    'link_col':cols[li],'total_matched':len(matched)
-                }
-
-        return jsonify({'status':'ok','io':io_data,'related':related,
-                        'io_id':io_id,'all_tables':tables,
-                        'lookups':{'party_count':len(party_lkp),
-                                   'broker_count':len(broker_lkp)}})
-    except ImportError:
-        return jsonify({'error':'not_installed'})
-    except Exception as e:
-        return jsonify({'error':str(e)})
-
-
-
 @app.route('/api/database-status')
 def api_database_status():
     global MDB_PATH
@@ -967,7 +1136,7 @@ def api_select_database():
     if manual_path:
         # Check if relative or absolute
         if not os.path.isabs(manual_path):
-            full_path = os.path.join(BASE, manual_path)
+            full_path = os.path.join(EXE_DIR, manual_path)
         else:
             full_path = manual_path
             
@@ -1060,7 +1229,18 @@ def api_select_database():
 
 @app.route('/setup', methods=['GET'])
 def setup():
-    return render_template('setup.html')
+    licensed_name = ""
+    p = os.path.join(EXE_DIR, 'license.key')
+    if os.path.exists(p):
+        try:
+            with open(p, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            import license_validator
+            if license_validator.verify_license_signature(data):
+                licensed_name = data.get('industry_name', '').strip()
+        except:
+            pass
+    return render_template('setup.html', licensed_name=licensed_name)
 
 @app.route('/api/setup', methods=['POST'])
 def api_setup():
@@ -1068,7 +1248,6 @@ def api_setup():
     try:
         name    = request.form.get('name', '').strip()
         address = request.form.get('address', '').strip()
-        symbol  = request.form.get('currency', 'Rs.').strip()
 
         if not name:
             return jsonify({'status': 'error', 'message': 'Company name is required.'}), 400
@@ -1078,20 +1257,35 @@ def api_setup():
         if 'logo' in request.files:
             f = request.files['logo']
             if f and f.filename:
+                # Clean up any existing logo and custom icon files in EXE_DIR
+                try:
+                    for filename in os.listdir(EXE_DIR):
+                        if filename.startswith('logo.') or filename == 'logo_custom.ico':
+                            try:
+                                os.remove(os.path.join(EXE_DIR, filename))
+                            except Exception as e:
+                                print(f"Error removing old logo file {filename}: {e}")
+                except Exception as e:
+                    print(f"Error listing directory for logo cleanup: {e}")
+
                 ext  = os.path.splitext(f.filename)[1].lower() or '.jpg'
-                dest = os.path.join(BASE, 'static', f'logo{ext}')
+                dest = os.path.join(EXE_DIR, f'logo{ext}')
                 f.save(dest)
-                logo_rel = f'static/logo{ext}'
+                logo_rel = f'logo{ext}'
 
         save_full_config({
             'INDUSTRY_NAME':    name,
             'INDUSTRY_ADDRESS': address,
-            'CURRENCY_SYMBOL':  symbol,
             'INDUSTRY_LOGO':    logo_rel,
         })
 
         # Reload config in memory
         CFG = load_config()
+        
+        # Update shortcut and convert logo to ICO
+        update_shortcut_icon(logo_rel if logo_rel and '/' not in logo_rel else None)
+        
+        check_license()
 
         return jsonify({'status': 'ok'})
     except Exception as e:
@@ -1105,6 +1299,292 @@ def api_shutdown():
         os._exit(0)
     threading.Thread(target=kill_server).start()
     return jsonify({'status': 'ok'})
+
+# ── LICENSE VALIDATION & DESKTOP SHORTCUT ─────────────────────────────────────
+import license_validator
+
+IS_LICENSED = False
+LICENSE_ERROR = ""
+
+def check_license():
+    global IS_LICENSED, LICENSE_ERROR
+    # Check for test mode bypass
+    is_test_cmd = '--test' in sys.argv or '-t' in sys.argv
+    is_test_env = os.environ.get('DASHBOARD_TEST_MODE') == '1'
+    is_test_cfg = CFG.get('TEST_MODE', 'False').strip().lower() in ('true', 'yes', '1')
+    
+    if is_test_cmd or is_test_env or is_test_cfg:
+        IS_LICENSED = True
+        LICENSE_ERROR = ""
+        print("  [TEST MODE] License verification bypassed.")
+        return True
+
+    is_licensed, err_msg = license_validator.check_license(EXE_DIR, CFG.get('INDUSTRY_NAME', ''))
+    IS_LICENSED = is_licensed
+    LICENSE_ERROR = err_msg
+    return IS_LICENSED
+
+# Run initial license check on startup
+check_license()
+
+def create_desktop_shortcut(ico_path=None):
+    try:
+        import subprocess
+        # Get desktop path dynamically
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        # Handle Windows Registry shell folder redirections
+        try:
+            import winreg
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders")
+            desktop, _ = winreg.QueryValueEx(key, "Desktop")
+            desktop = os.path.expandvars(desktop)
+        except:
+            pass
+            
+        shortcut_path = os.path.join(desktop, "Rice Mill Dashboard.lnk")
+        exe_path = sys.executable
+        
+        # In development mode (not frozen), skip shortcut creation
+        if not getattr(sys, 'frozen', False):
+            return
+            
+        if not ico_path or not os.path.exists(ico_path):
+            # Fall back to using the executable itself (which has the default icon embedded)
+            ico_path = exe_path
+                
+        ps_command = (
+            f"$WshShell = New-Object -ComObject WScript.Shell; "
+            f"$Shortcut = $WshShell.CreateShortcut('{shortcut_path}'); "
+            f"$Shortcut.TargetPath = '{exe_path}'; "
+            f"$Shortcut.WorkingDirectory = '{EXE_DIR}'; "
+            f"$Shortcut.IconLocation = '{ico_path}'; "
+            f"$Shortcut.Description = 'Rice Mill Dashboard'; "
+            f"$Shortcut.Save();"
+        )
+        
+        # Run PowerShell command silently
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_command],
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except Exception as e:
+        print(f"Error creating shortcut: {e}")
+
+
+def update_shortcut_icon(logo_filename=None):
+    try:
+        ico_path = os.path.join(EXE_DIR, 'logo_custom.ico')
+        
+        # If a custom logo exists and can be converted
+        if logo_filename and not logo_filename.startswith('static/'):
+            logo_path = logo_filename if os.path.isabs(logo_filename) else os.path.join(EXE_DIR, logo_filename)
+            if os.path.exists(logo_path):
+                from PIL import Image
+                img = Image.open(logo_path)
+                # Convert and save as ICO with standard sizes
+                img.save(ico_path, format='ICO', sizes=[(256, 256), (128, 128), (64, 64), (32, 32)])
+                create_desktop_shortcut(ico_path)
+                return
+                
+        # If no custom logo exists, clean up any custom icons and point back to the exe
+        if os.path.exists(ico_path):
+            try: os.remove(ico_path)
+            except: pass
+        legacy_ico = os.path.join(EXE_DIR, 'logo.ico')
+        if os.path.exists(legacy_ico):
+            try: os.remove(legacy_ico)
+            except: pass
+            
+        create_desktop_shortcut(None)
+    except Exception as e:
+        print(f"Error updating shortcut icon: {e}")
+
+# Startup Task: Ensure Desktop shortcut exists on first run
+try:
+    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders")
+        desktop, _ = winreg.QueryValueEx(key, "Desktop")
+        desktop = os.path.expandvars(desktop)
+    except:
+        pass
+    shortcut_path = os.path.join(desktop, "Rice Mill Dashboard.lnk")
+    if not os.path.exists(shortcut_path) and getattr(sys, 'frozen', False):
+        update_shortcut_icon(CFG.get('INDUSTRY_LOGO', ''))
+except:
+    pass
+
+@app.route('/logo')
+def serve_logo():
+    from flask import send_file, send_from_directory
+    logo_filename = CFG.get('INDUSTRY_LOGO', '').strip()
+    if logo_filename:
+        # Resolve path relative to the external EXE directory
+        ext_logo_path = logo_filename if os.path.isabs(logo_filename) else os.path.join(EXE_DIR, logo_filename)
+        if os.path.exists(ext_logo_path):
+            return send_file(ext_logo_path)
+            
+    # Fallback to embedded default logo inside the .exe
+    return send_from_directory(os.path.join(BASE, 'static'), 'logo.jpg')
+
+# ── LOGIN & USER MANAGEMENT ───────────────────────────────────────────────────
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    if request.method == 'GET':
+        if auth.get_current_user():
+            return redirect(url_for('index'))
+        return render_template('login.html')
+        
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '').strip()
+    
+    user = auth.authenticate_user(username, password)
+    if user:
+        session['user'] = user['username']
+        session['role'] = user['role']
+        next_url = request.args.get('next') or url_for('index')
+        return redirect(next_url)
+    
+    return render_template('login.html', error="Invalid username or password.")
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login_page'))
+
+@app.route('/api/users', methods=['GET', 'POST'])
+@auth.login_required(role='admin')
+def api_users():
+    if request.method == 'GET':
+        users = auth.load_users()
+        clean_users = [{'username': u['username'], 'role': u['role'], 'name': u.get('name', u['username'])} for u in users.values()]
+        return jsonify(clean_users)
+    
+    data = request.get_json() or {}
+    success, msg = auth.create_user(data.get('username', ''), data.get('password', ''), data.get('role', 'staff'), data.get('name'))
+    if success:
+        return jsonify({'status': 'ok', 'message': msg})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
+# ── CLOUD SYNC ENDPOINT (AES-256 Encrypted + GZIP Compressed) ──────────────────
+@app.route('/api/sync-database', methods=['POST'])
+def api_sync_database():
+    global MDB_PATH, _db_cache_mtime
+    
+    sync_token = request.headers.get('X-Sync-Token', '').strip()
+    expected_token = os.environ.get('SYNC_SECRET_TOKEN', 'RiceMillSyncSecretToken2026!').strip()
+    
+    if not sync_token or sync_token != expected_token:
+        return jsonify({'status': 'error', 'message': 'Unauthorized sync token'}), 401
+        
+    try:
+        payload = request.data
+        if not payload:
+            return jsonify({'status': 'error', 'message': 'Empty payload'}), 400
+            
+        enc_key = os.environ.get('ENCRYPTION_KEY', 'RiceMillDashboardDefaultEncryptionKey2026!')
+        
+        try:
+            decrypted_bytes = crypto_utils.decrypt_data(payload, enc_key)
+        except Exception:
+            decrypted_bytes = payload
+
+        try:
+            mdb_bytes = gzip.decompress(decrypted_bytes)
+        except Exception:
+            mdb_bytes = decrypted_bytes
+
+        target_dir = os.path.dirname(MDB_PATH) if MDB_PATH else os.path.join(EXE_DIR, 'data')
+        os.makedirs(target_dir, exist_ok=True)
+        
+        if not MDB_PATH:
+            MDB_PATH = os.path.join(target_dir, 'Database.mdb')
+            save_config(MDB_PATH)
+
+        with open(MDB_PATH, 'wb') as f:
+            f.write(mdb_bytes)
+
+        with _db_cache_lock:
+            _db_cache.clear()
+            _db_cache_mtime = None
+            _db_cache_ready.clear()
+
+        threading.Thread(target=_warmup, daemon=True).start()
+
+        return jsonify({
+            'status': 'ok',
+            'message': 'Database synced successfully',
+            'filename': os.path.basename(MDB_PATH),
+            'size_bytes': len(mdb_bytes)
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Sync failed: {str(e)}'}), 500
+
+@app.before_request
+def restrict_unlicensed():
+    # Always allow static files, setup, license, login, and sync endpoints
+    allowed_paths = ('/static/', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/api/sync-database')
+    if any(request.path.startswith(p) for p in allowed_paths) or request.path in allowed_paths:
+        return
+    
+    # Check if first run (redirect to setup, which is allowed)
+    if is_first_run():
+        return
+        
+    # Check license status
+    if not IS_LICENSED:
+        if check_license():
+            return
+        return redirect(url_for('license_page'))
+
+    # Check user login authentication
+    auth_enabled = os.environ.get('ENABLE_AUTH', 'True').strip().lower() in ('true', '1', 'yes')
+    if auth_enabled:
+        user = auth.get_current_user()
+        if not user:
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'unauthorized', 'message': 'Authentication required'}), 401
+            return redirect(url_for('login_page', next=request.url))
+
+
+@app.route('/license')
+def license_page():
+    cfg_name = CFG.get('INDUSTRY_NAME', 'Rice Mill')
+    return render_template('license.html', industry_name=cfg_name, error=LICENSE_ERROR)
+
+@app.route('/api/license/activate', methods=['POST'])
+def activate_license():
+    try:
+        req_data = request.get_json()
+        key_str = req_data.get('key', '').strip()
+        if not key_str:
+            return jsonify({'success': False, 'message': 'Key cannot be empty'}), 400
+        
+        # Attempt to parse key as JSON
+        try:
+            key_json = json.loads(key_str)
+        except json.JSONDecodeError:
+            return jsonify({'success': False, 'message': 'Invalid key format. Must be a valid JSON license key.'}), 400
+        
+        # Write to license.key in EXE_DIR
+        p = os.path.join(EXE_DIR, 'license.key')
+        with open(p, 'w', encoding='utf-8') as f:
+            json.dump(key_json, f, indent=2)
+            
+        # Re-check license
+        if check_license():
+            return jsonify({'success': True, 'message': 'License activated successfully'})
+        else:
+            # If invalid, remove the invalid file so we don't load it next time
+            if os.path.exists(p):
+                os.remove(p)
+            return jsonify({'success': False, 'message': LICENSE_ERROR}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Activation error: {str(e)}'}), 500
 
 @app.route('/')
 def index():
@@ -1126,8 +1606,10 @@ def index():
         industry_address=CFG.get('INDUSTRY_ADDRESS', ''),
         currency_symbol=CFG.get('CURRENCY_SYMBOL', 'Rs.'),
         app_title=CFG.get('APP_TITLE', '').strip() or name,
-        industry_logo=CFG.get('INDUSTRY_LOGO', 'static/logo.jpg'),
-        network_url=network_url
+        industry_logo='logo',
+        network_url=network_url,
+        show_bi_reports=SHOW_BI_REPORTS,
+        show_stocks=SHOW_STOCKS
     )
 
 def download_url(url, timeout=10):
@@ -1219,6 +1701,33 @@ def update_restart():
     return jsonify({'status': 'ok'})
 
 if __name__ == '__main__':
+    # 1. Free port 5000 if occupied to prevent silent startup crash
+    try:
+        output = subprocess.check_output('netstat -aon', shell=True).decode('utf-8', errors='ignore')
+        for line in output.splitlines():
+            if ':5000' in line and 'LISTENING' in line:
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    pid = parts[-1]
+                    if int(pid) != os.getpid():
+                        print(f"Port 5000 occupied by PID {pid}. Terminating it...")
+                        subprocess.run(f'taskkill /F /PID {pid}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error freeing port 5000: {e}")
+
+    # 2. Auto-open default web browser on startup
+    def auto_open_browser():
+        time.sleep(1.5)
+        try:
+            os.startfile("http://localhost:5000")
+        except:
+            try:
+                import webbrowser
+                webbrowser.open("http://localhost:5000")
+            except:
+                pass
+    threading.Thread(target=auto_open_browser, daemon=True).start()
+
     import socket
     try:
         hostname = socket.gethostname()
