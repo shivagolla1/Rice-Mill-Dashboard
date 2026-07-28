@@ -180,8 +180,9 @@
     <form id="loginForm" method="POST" action="/login">
       <div class="form-group">
         <label class="form-lbl" for="company_code">Company Code</label>
-        <input type="text" id="company_code" name="company_code" placeholder="e.g. SGRI or RAMA" value="{{ company_code or 'SGRI' }}" required autofocus style="text-transform: uppercase;" />
+        <input type="text" id="company_code" name="company_code" placeholder="e.g. ABCD, DEFG" value="{{ company_code or '' }}" required autofocus style="text-transform: uppercase;" />
       </div>
+
 
       <div class="form-group">
         <label class="form-lbl" for="username">Username</label>

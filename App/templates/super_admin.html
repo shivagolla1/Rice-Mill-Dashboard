@@ -101,9 +101,11 @@
             {% endif %}
           </td>
           <td style="display:flex; gap:6px;">
+            <button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="openEditNameModal('{{ t.license_key }}', '{{ t.company_name|e }}')">✏️ Edit Name</button>
             <button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="openResetModal('{{ t.company_code }}')">🔑 Reset Credentials</button>
             <button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="openExtendModal('{{ t.license_key }}', '{{ t.expiry_date }}', '{{ t.status }}')">📅 Subscription</button>
           </td>
+
         </tr>
         {% endfor %}
       </tbody>
@@ -195,12 +197,47 @@
       <div style="display:flex; gap:10px; margin-top:20px;">
         <button class="btn btn-secondary" style="width:50%;" onclick="closeExtendModal()">Cancel</button>
         <button class="btn" style="width:50%;" onclick="submitUpdateSubscription()">Save Subscription</button>
+  <!-- Edit Company Name Modal -->
+  <div class="modal-overlay" id="editNameModal">
+    <div class="modal">
+      <h3 style="margin-bottom: 16px; color:#38bdf8;">✏️ Edit Company Name</h3>
+      <input type="hidden" id="editNameLicenseKey" />
+      <div class="form-group">
+        <label>Company / Mill Name</label>
+        <input type="text" id="editNewName" placeholder="Enter new company name" />
+      </div>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn btn-secondary" style="width:50%;" onclick="closeEditNameModal()">Cancel</button>
+        <button class="btn" style="width:50%;" onclick="submitEditCompanyName()">Save Company Name</button>
       </div>
     </div>
   </div>
 
   <script>
+    function openEditNameModal(key, currentName) {
+      document.getElementById('editNameLicenseKey').value = key;
+      document.getElementById('editNewName').value = currentName;
+      document.getElementById('editNameModal').style.display = 'flex';
+    }
+    function closeEditNameModal() { document.getElementById('editNameModal').style.display = 'none'; }
+
+    async function submitEditCompanyName() {
+      const key = document.getElementById('editNameLicenseKey').value;
+      const newName = document.getElementById('editNewName').value.trim();
+      if (!newName) { alert('Company Name cannot be empty'); return; }
+
+      const resp = await fetch('/api/super-admin/update-company-name', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ license_key: key, company_name: newName })
+      });
+      const res = await resp.json();
+      alert(res.message);
+      if (resp.ok) location.reload();
+    }
+
     function openAddClientModal() { document.getElementById('addClientModal').style.display = 'flex'; }
+
     function closeAddClientModal() { document.getElementById('addClientModal').style.display = 'none'; }
 
     function openResetModal(code) {

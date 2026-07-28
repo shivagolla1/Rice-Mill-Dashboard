@@ -186,3 +186,23 @@ def update_tenant_status(license_key, status=None, expiry_date=None, show_stocks
     tenants[license_key] = tenant
     save_tenants(tenants)
     return True, "Tenant updated successfully"
+
+def update_tenant_company_name(license_key, new_company_name):
+    if not new_company_name or not new_company_name.strip():
+        return False, "Company Name cannot be empty"
+    tenants = load_tenants()
+    tenant = tenants.get(license_key)
+    if not tenant:
+        for k, t in tenants.items():
+            if t.get('tenant_id') == license_key or t.get('company_code') == license_key:
+                tenant = t
+                license_key = k
+                break
+    if not tenant:
+        return False, "Tenant not found"
+
+    tenant['company_name'] = new_company_name.strip()
+    tenants[license_key] = tenant
+    save_tenants(tenants)
+    return True, "Company Name updated successfully"
+

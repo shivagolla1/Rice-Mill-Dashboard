@@ -2148,15 +2148,15 @@
     <div
       style="background:var(--sur); border:1px solid var(--bdr); border-radius:12px; padding:40px; max-width:500px; text-align:center; box-shadow:0 12px 36px rgba(0,0,0,0.08);">
       <div style="font-size:48px; margin-bottom:20px;">💾</div>
-      <h2 style="font-size:20px; font-weight:600; margin-bottom:12px; color:var(--tx);">No Database File Selected</h2>
+      <h2 style="font-size:20px; font-weight:600; margin-bottom:12px; color:var(--tx);">No File Selected</h2>
       <p style="font-size:14px; color:var(--tx2); margin-bottom:24px; line-height:1.6;">
-        Please select the {{ industry_name }} Access Database (.mdb) file from your secure USB pendrive to view the
+        Please select the {{ industry_name }} Access (.mdb) file from your secure USB pendrive to view the
         dashboard.
       </p>
       <button onclick="changeDatabase()"
         style="background:var(--accent); color:#fff; border:none; padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; cursor:pointer; transition:background 0.2s; display:inline-flex; align-items:center; gap:8px;"
         onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='var(--accent)'">
-        📁 Select Database File
+        📁 Select File
       </button>
     </div>
   </div>
@@ -2231,14 +2231,12 @@
         </div>
       </div>
     </div>
-        <div class="nav-item" id="btn-close-db" onclick="closeDashboard()"
-          style="margin-bottom:0; padding:8px 12px; color:#f87171;">
-          <span class="nav-icon"><svg viewBox="0 0 24 24" style="fill:currentColor;">
-              <path
-                d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C18.43 8.35 19 10.11 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-1.89.57-3.65 1.58-5.41L5.17 5.17C3.21 7.27 2 10.05 2 13c0 5.52 4.48 10 10 10s10-4.48 10-10c0-2.95-1.21-5.73-3.17-7.83z" />
-            </svg></span>
-          <span class="nav-txt">Close Dashboard</span>
-        </div>
+        <a href="/logout" class="nav-item" id="btn-close-db"
+          style="margin-bottom:0; padding:8px 12px; color:#f87171; text-decoration:none;">
+          <span class="nav-icon">🚪</span>
+          <span class="nav-txt">Logout</span>
+        </a>
+
       </div>
       <div class="sb-footer">
         <span class="nav-icon"><svg viewBox="0 0 24 24">
@@ -2849,7 +2847,7 @@
         const data = await res.json();
         document.getElementById('sync-time').textContent = nowStr();
         if (data.error) {
-          const msgs = { file_not_found: '⚠ .mdb file not found — select or place the database file in the data/ folder', not_installed: '⚠ Run setup.bat to install access_parser' };
+          const msgs = { file_not_found: '⚠ .mdb file not found — select or place the file in the data/ folder', not_installed: '⚠ Run setup.bat to install access_parser' };
           document.getElementById('orders-body').innerHTML = `<tr><td colspan="15" class="td"><div class="banner warn">${msgs[data.error] || '⚠ ' + esc(data.error)}</div></td></tr>`;
           return;
         }
@@ -3865,7 +3863,7 @@
           }
         }
       } catch (e) {
-        console.error('Failed to check database status:', e);
+        console.error('Failed to check Filestatus:', e);
       }
     }
 
@@ -4087,7 +4085,7 @@
         .then(res => res.json())
         .then(data => {
           if (data.exists && data.cache_ready) {
-            // Database is loaded and cache is ready! Check updates.
+            // Fileis loaded and cache is ready! Check updates.
             fetch('/api/update/check')
               .then(res => res.json())
               .then(updateData => {
@@ -4097,7 +4095,7 @@
               })
               .catch(err => console.warn("Background update check failed:", err));
           } else if (data.exists) {
-            // Database exists but cache is warming up. Check again in 1 second.
+            // Fileexists but cache is warming up. Check again in 1 second.
             setTimeout(checkUpdatesOnStartup, 1000);
           }
         })
@@ -4219,11 +4217,11 @@
     checkUpdatesOnStartup();
   </script>
 
-  <!-- Web UI Direct Database Upload Modal -->
+  <!-- Web UI Direct FileUpload Modal -->
   <div id="webUploadModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; padding:20px;">
     <div style="background:var(--sur); border:1px solid var(--bdr); border-radius:14px; padding:28px; max-width:420px; width:100%; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
       <h3 style="margin-bottom:8px; font-size:17px; color:var(--tx);">📁 Sync / Upload Database</h3>
-      <p style="font-size:13px; color:var(--tx2); margin-bottom:20px; line-height:1.5;">Select your Access Database file (<code>.mdb</code>) from your USB drive or computer to update the dashboard.</p>
+      <p style="font-size:13px; color:var(--tx2); margin-bottom:20px; line-height:1.5;">Select your Access file (<code>.mdb</code>) from your USB drive or computer to update the dashboard.</p>
       
       <div id="uploadStatusMsg" style="display:none; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;"></div>
 
@@ -4238,8 +4236,13 @@
         <button type="button" class="btn" style="background:var(--tx3); width:50%;" onclick="closeWebUploadModal()">Cancel</button>
         <button type="button" class="btn" style="width:50%;" id="btnSubmitUpload" onclick="startDirectWebUpload()" disabled>Upload & Sync</button>
       </div>
+
+      <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--bdr2); text-align:center;">
+        <button type="button" class="btn" style="background:rgba(168,56,32,0.12); color:var(--red); border:1px solid rgba(168,56,32,0.3); font-size:12px; padding:7px 14px;" onclick="confirmDeleteDatabase()">🗑️ Delete Current File</button>
+      </div>
     </div>
   </div>
+
 
   <script>
     function openWebUploadModal() {
@@ -4269,7 +4272,7 @@
       msgBox.style.display = 'block';
       msgBox.style.background = 'rgba(40,140,200,0.15)';
       msgBox.style.color = '#0284c7';
-      msgBox.innerText = 'Uploading and syncing database in seconds...';
+      msgBox.innerText = 'Uploading and syncing Filein seconds...';
       submitBtn.disabled = true;
 
       const formData = new FormData();
@@ -4284,7 +4287,7 @@
         if (resp.ok && res.status === 'ok') {
           msgBox.style.background = 'rgba(40,140,60,0.15)';
           msgBox.style.color = '#1e6028';
-          msgBox.innerText = '✓ Database synced successfully! Refreshing dashboard...';
+          msgBox.innerText = '✓ Filesynced successfully! Refreshing dashboard...';
           setTimeout(() => { window.location.reload(); }, 1500);
         } else {
           msgBox.style.background = 'rgba(168,56,32,0.15)';
@@ -4300,7 +4303,30 @@
         submitBtn.disabled = false;
       }
     }
+
+    async function confirmDeleteDatabase() {
+      if (!confirm("Are you sure you want to delete the uploaded file for your mill account? This action cannot be undone.")) return;
+      const msgBox = document.getElementById('uploadStatusMsg');
+      msgBox.style.display = 'block';
+      msgBox.style.background = 'rgba(168,56,32,0.15)';
+      msgBox.style.color = '#a83820';
+      msgBox.innerText = 'Deleting file...';
+
+      try {
+        const resp = await fetch('/api/delete-database', { method: 'POST' });
+        const res = await resp.json();
+        if (resp.ok && res.status === 'ok') {
+          alert(res.message);
+          window.location.reload();
+        } else {
+          msgBox.innerText = res.message || 'Deletion failed';
+        }
+      } catch (err) {
+        msgBox.innerText = 'Network connection error.';
+      }
+    }
   </script>
+
 </body>
 
-</html>
+</html>

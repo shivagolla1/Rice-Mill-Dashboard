@@ -359,7 +359,7 @@ def read_table(tname):
 def _warmup():
     """Pre-parse the most-used tables in the background so first page load is fast."""
     key_tables = ['IO', 'IO Details', 'Confirmation', 'Journal', 'IO DC', 'IO Other Details']
-    print('  [Warmup]  Warming up database cache...', flush=True)
+    print('  [Warmup]  Warming up File cache...', flush=True)
     for t in key_tables:
         try:
             get_cached_table(t)
@@ -367,7 +367,7 @@ def _warmup():
         except Exception as e:
             print(f'  [Error]  Could not cache {t}: {e}', flush=True)
     _db_cache_ready.set()
-    print('  [OK]  Database cache ready — dashboard will be fast!', flush=True)
+    print('  [OK]  File cache ready — dashboard will be fast!', flush=True)
 
 # Start warmup immediately when app loads
 if os.path.exists(MDB_PATH):
@@ -1147,14 +1147,14 @@ def ctypes_select_file():
     except:
         ofn.hwndOwner = None
         
-    ofn.lpstrFilter = "Access Database (*.mdb)\0*.mdb\0All Files (*.*)\0*.*\0"
+    ofn.lpstrFilter = "Access File (*.mdb)\0*.mdb\0All Files (*.*)\0*.*\0"
     
     buffer_size = 1024
     file_buffer = ctypes.create_unicode_buffer(buffer_size)
     ofn.lpstrFile = ctypes.cast(file_buffer, wintypes.LPWSTR)
     ofn.nMaxFile = buffer_size
     
-    ofn.lpstrTitle = "Select Access Database File"
+    ofn.lpstrTitle = "Select Access File File"
     ofn.Flags = 0x00000800 | 0x00001000 | 0x00000008
     
     if ctypes.windll.comdlg32.GetOpenFileNameW(ctypes.byref(ofn)):
@@ -1195,8 +1195,8 @@ def api_select_database():
             cmd = (
                 "Add-Type -AssemblyName System.Windows.Forms; "
                 "$dialog = New-Object System.Windows.Forms.OpenFileDialog; "
-                "$dialog.Filter = 'Access Database (*.mdb)|*.mdb'; "
-                "$dialog.Title = 'Select Access Database File'; "
+                "$dialog.Filter = 'Access File (*.mdb)|*.mdb'; "
+                "$dialog.Title = 'Select Access File File'; "
                 "$dialog.InitialDirectory = [System.IO.Directory]::GetCurrentDirectory(); "
                 "$res = $dialog.ShowDialog(); "
                 "if ($res -eq 'OK') { Write-Output $dialog.FileName }"
@@ -1227,7 +1227,7 @@ def api_select_database():
                 "root = tk.Tk(); "
                 "root.withdraw(); "
                 "root.wm_attributes('-topmost', 1); "
-                "path = fd.askopenfilename(title='Select Access Database File', filetypes=[('Access Database', '*.mdb')]); "
+                "path = fd.askopenfilename(title='Select Access File File', filetypes=[('Access File', '*.mdb')]); "
                 "if path: print(path)"
             )
             try:
@@ -1530,7 +1530,7 @@ def api_change_password():
         return jsonify({'status': 'ok', 'message': msg})
     return jsonify({'status': 'error', 'message': msg}), 400
 
-# ── DIRECT WEB UI DATABASE UPLOAD ENDPOINT (Zero Desktop Software Required) ────
+# ── DIRECT WEB UI File UPLOAD ENDPOINT (Zero Desktop Software Required) ────
 @app.route('/api/upload-database', methods=['POST'])
 def api_upload_database():
     if 'user' not in session or not isinstance(session['user'], dict):
@@ -1572,9 +1572,32 @@ def api_upload_database():
 
     return jsonify({
         'status': 'ok',
-        'message': 'Database updated successfully! Reports will now reflect the new data.',
+        'message': 'File updated successfully! Reports will now reflect the new data.',
         'filename': f.filename,
         'size_bytes': len(mdb_bytes)
+    })
+
+@app.route('/api/delete-database', methods=['POST'])
+def api_delete_database():
+    if 'user' not in session or not isinstance(session['user'], dict):
+        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+        
+    tenant_id = session['user'].get('tenant_id', 'client_sgri')
+    tenant_dir = tenants.get_tenant_dir(tenant_id)
+    target_mdb = os.path.join(tenant_dir, 'Database.mdb')
+
+    if os.path.exists(target_mdb):
+        try:
+            os.remove(target_mdb)
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Failed to delete File: {str(e)}'}), 500
+
+    with _db_cache_lock:
+        _db_cache.clear()
+
+    return jsonify({
+        'status': 'ok',
+        'message': 'File file deleted successfully! You can now upload a new .mdb file.'
     })
 
 # ── SUPER-ADMIN SaaS MANAGEMENT PORTAL ───────────────────────────────────────
@@ -1593,6 +1616,21 @@ def super_admin_page():
     all_tenants = tenants.load_tenants()
     tenant_list = list(all_tenants.values())
     return render_template('super_admin.html', tenants=tenant_list, super_admin_pass=SUPER_ADMIN_PASSWORD)
+
+@app.route('/api/super-admin/update-company-name', methods=['POST'])
+def api_super_admin_update_company_name():
+    if not session.get('is_super_admin'):
+        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
+
+    data = request.get_json() or {}
+    license_key = data.get('license_key', '').strip()
+    new_company_name = data.get('company_name', '').strip()
+
+    success, msg = tenants.update_tenant_company_name(license_key, new_company_name)
+    if success:
+        return jsonify({'status': 'ok', 'message': msg})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
 
 @app.route('/api/super-admin/add-client', methods=['POST'])
 def api_super_admin_add_client():
@@ -1777,7 +1815,7 @@ def api_sync_database():
 
         return jsonify({
             'status': 'ok',
-            'message': 'Database synced successfully',
+            'message': 'File synced successfully',
             'filename': os.path.basename(target_mdb),
             'size_bytes': len(mdb_bytes)
         })
@@ -1790,7 +1828,8 @@ def api_sync_database():
 @app.before_request
 def restrict_unlicensed():
     # Always allow static files, setup, license, login, SaaS endpoints, and sync endpoints
-    allowed_paths = ('/static/', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/api/sync-database', '/super-admin', '/api/super-admin', '/api/forgot-password', '/api/upload-database')
+    allowed_paths = ('/static/', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/api/sync-database', '/super-admin', '/api/super-admin', '/api/forgot-password', '/api/upload-database', '/api/delete-database')
+
     if any(request.path.startswith(p) for p in allowed_paths) or request.path in allowed_paths:
         return
 
@@ -2003,9 +2042,9 @@ if __name__ == '__main__':
     if net_url:
         print(f'  *  On your network     ->  {net_url}\n')
     if os.path.exists(MDB_PATH):
-        print(f'  [OK]  Database: {os.path.basename(MDB_PATH)}')
+        print(f'  [OK]  File: {os.path.basename(MDB_PATH)}')
     else:
-        print(f'  [INFO]  No database selected yet — use the DB selector in the dashboard.')
+        print(f'  [INFO]  No File selected yet — use the DB selector in the dashboard.')
 
     # ── IDLE WATCHDOG: auto-shutdown after 120 min of no browser activity ──────
     _last_active = [time.time()]

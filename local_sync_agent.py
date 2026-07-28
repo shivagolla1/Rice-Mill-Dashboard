@@ -248,7 +248,7 @@ def watch_loop():
                             last_hash = current_hash
                             last_mtime = current_mtime
             else:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Waiting for database file or USB drive...")
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Waiting for file or USB drive...")
 
         except Exception as e:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] Watcher exception: {e}")
