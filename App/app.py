@@ -1756,9 +1756,8 @@ ENCRYPTION_KEY=RiceMillDashboardDefaultEncryptionKey2026!
     shortcut_bat_content = """@echo off
 set "SCRIPT_DIR=%~dp0"
 set "TARGET=%SCRIPT_DIR%sync_now.bat"
-set "SHORTCUT=%USERPROFILE%\\Desktop\\Sync Database to Cloud.lnk"
 
-powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%TARGET%'; $s.WorkingDirectory='%SCRIPT_DIR%'; $s.Save()"
+powershell -ExecutionPolicy Bypass -NoProfile -Command "$desktop=[Environment]::GetFolderPath('Desktop'); $lnk=Join-Path $desktop 'Sync Database to Cloud.lnk'; $s=(New-Object -COM WScript.Shell).CreateShortcut($lnk); $s.TargetPath='%TARGET%'; $s.WorkingDirectory='%SCRIPT_DIR%'; $s.Save()"
 
 echo.
 echo ====================================================
@@ -1770,6 +1769,7 @@ echo  directly from your Windows Desktop.
 echo.
 pause
 """
+
 
     bat_code = read_file_content('sync_now.bat')
     ps1_code = read_file_content('sync_uploader.ps1')
