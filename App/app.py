@@ -1727,12 +1727,19 @@ def api_sync_database():
         except Exception:
             mdb_bytes = decrypted_bytes
 
-        if not MDB_PATH:
-            MDB_PATH = os.path.join(target_dir, 'Database.mdb')
-            save_config(MDB_PATH)
+        # Resolve target tenant directory from license key or sync token
+        tenant_key = request.headers.get('X-License-Key') or sync_token
+        tenant = tenants.get_tenant_by_key(tenant_key)
+        tenant_id = tenant.get('tenant_id', 'client_sgri') if tenant else 'client_sgri'
+        
+        tenant_dir = tenants.get_tenant_dir(tenant_id)
+        target_mdb = os.path.join(tenant_dir, 'Database.mdb')
 
-        with open(MDB_PATH, 'wb') as f:
+        with open(target_mdb, 'wb') as f:
             f.write(mdb_bytes)
+
+        if tenant_id == 'client_sgri':
+            MDB_PATH = target_mdb
 
         with _db_cache_lock:
             _db_cache.clear()
@@ -1744,9 +1751,10 @@ def api_sync_database():
         return jsonify({
             'status': 'ok',
             'message': 'Database synced successfully',
-            'filename': os.path.basename(MDB_PATH),
+            'filename': os.path.basename(target_mdb),
             'size_bytes': len(mdb_bytes)
         })
+
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Sync failed: {str(e)}'}), 500
@@ -1754,10 +1762,11 @@ def api_sync_database():
 
 @app.before_request
 def restrict_unlicensed():
-    # Always allow static files, setup, license, login, and sync endpoints
-    allowed_paths = ('/static/', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/api/sync-database')
+    # Always allow static files, setup, license, login, SaaS endpoints, and sync endpoints
+    allowed_paths = ('/static/', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/api/sync-database', '/super-admin', '/api/super-admin', '/api/forgot-password', '/api/upload-database')
     if any(request.path.startswith(p) for p in allowed_paths) or request.path in allowed_paths:
         return
+
     
     # Check if first run (redirect to setup, which is allowed)
     if is_first_run():

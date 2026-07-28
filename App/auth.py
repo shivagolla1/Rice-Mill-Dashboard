@@ -4,11 +4,18 @@ import hashlib
 import secrets
 from functools import wraps
 from datetime import datetime
-from flask import session, request, redirect, url_for, jsonify, current_app
+from flask import session, request, redirect, url_for, jsonify, current_app, render_template
+
 
 USERS_FILE_NAME = 'users.json'
 
+def get_current_user():
+    if 'user' in session:
+        return session['user']
+    return None
+
 def get_tenant_users_path(tenant_id="client_sgri"):
+
     from tenants import get_tenant_dir
     tenant_dir = get_tenant_dir(tenant_id)
     return os.path.join(tenant_dir, USERS_FILE_NAME)
@@ -179,12 +186,17 @@ def login_required(role=None):
             if 'user' not in session:
                 if request.path.startswith('/api/'):
                     return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
-                return redirect(url_for('login', next=request.url))
+                return redirect(url_for('login_page', next=request.url))
+
 
             if role and session.get('user', {}).get('role') != role and session.get('user', {}).get('role') != 'super_admin':
                 if request.path.startswith('/api/'):
                     return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
-                return render_template('403.html', message="Admin access required"), 403
+                try:
+                    return render_template('403.html', message="Admin access required"), 403
+                except Exception:
+                    return "<h3 style='font-family:sans-serif; text-align:center; margin-top:50px;'>403 Forbidden: Admin access required</h3>", 403
+
 
             return f(*args, **kwargs)
         return decorated_function
