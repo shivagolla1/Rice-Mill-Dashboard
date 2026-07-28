@@ -259,15 +259,39 @@ _db_cache_mtime  = None        # mtime of .mdb when cache was last built
 _db_cache_lock   = threading.Lock()
 _db_cache_ready  = threading.Event()  # set once warmup is complete
 
+import logging
+for _log_name in ("access_parser", "access_parser.access_parser"):
+    _lg = logging.getLogger(_log_name)
+    _lg.setLevel(logging.CRITICAL)
+    _lg.propagate = False
+
+class SuppressStderr:
+    def __enter__(self):
+        self._orig_stderr = sys.stderr
+        try:
+            sys.stderr = open(os.devnull, 'w')
+        except Exception:
+            pass
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if sys.stderr != self._orig_stderr:
+                sys.stderr.close()
+        except Exception:
+            pass
+        sys.stderr = self._orig_stderr
+
 def mdb_open(path):
     from access_parser import AccessParser
-    return AccessParser(path)
+    with SuppressStderr():
+        return AccessParser(path)
 
 def mdb_tables(db):
     return [t for t in db.catalog if not t.startswith('MSys')]
 
 def mdb_read(db, tname):
-    raw = db.parse_table(tname)
+    with SuppressStderr():
+        raw = db.parse_table(tname)
     if not raw: return [], [], []
     cols = list(raw.keys())
     types = []
@@ -277,6 +301,7 @@ def mdb_read(db, tname):
     n = len(raw[cols[0]])
     rows = [[raw[c][i] for c in cols] for i in range(n)]
     return cols, types, rows
+
 
 def _cache_valid():
     """Return True if in-memory cache matches the current file on disk."""
@@ -1637,16 +1662,18 @@ def api_super_admin_update_subscription():
 @app.route('/api/users', methods=['GET', 'POST'])
 @auth.login_required(role='admin')
 def api_users():
+    tenant_id = session.get('tenant_id', 'client_sgri')
     if request.method == 'GET':
-        users = auth.load_users()
+        users = auth.load_tenant_users(tenant_id)
         clean_users = [{'username': u['username'], 'role': u['role'], 'name': u.get('name', u['username'])} for u in users.values()]
         return jsonify(clean_users)
     
     data = request.get_json() or {}
-    success, msg = auth.create_user(data.get('username', ''), data.get('password', ''), data.get('role', 'staff'), data.get('name'))
+    success, msg = auth.create_tenant_user(tenant_id, data.get('username', ''), data.get('password', ''), data.get('role', 'staff'), data.get('name'))
     if success:
         return jsonify({'status': 'ok', 'message': msg})
     return jsonify({'status': 'error', 'message': msg}), 400
+
 
 # ── CLOUD SYNC ENDPOINT (AES-256 Encrypted + GZIP Compressed) ──────────────────
 @app.route('/api/sync-database', methods=['POST'])
@@ -1781,8 +1808,9 @@ def restrict_unlicensed():
     # Check user login authentication
     auth_enabled = os.environ.get('ENABLE_AUTH', 'True').strip().lower() in ('true', '1', 'yes')
     if auth_enabled:
-        user = auth.get_current_user()
+        user = session.get('user')
         if not user:
+
             if request.path.startswith('/api/'):
                 return jsonify({'error': 'unauthorized', 'message': 'Authentication required'}), 401
             return redirect(url_for('login_page', next=request.url))
