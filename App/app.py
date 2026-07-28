@@ -255,10 +255,6 @@ def days_since(d1):
 # ── MDB ACCESS + CACHE ────────────────────────────────────────────────────────
 import threading
 
-_db_cache        = {}          # table_name → (cols, types, rows)
-_db_cache_mtime  = None        # mtime of .mdb when cache was last built
-_db_cache_lock   = threading.Lock()
-_db_cache_ready  = threading.Event()  # set once warmup is complete
 
 import logging
 for _log_name in ("access_parser", "access_parser.access_parser"):
@@ -1083,23 +1079,23 @@ def api_stocks_trial_balance():
             amt  = unscale(r[d_amt_i])      if d_amt_i  is not None else 0.0
 
             key = (typ, mode)
-            g   = groups[variety][key]
-            g['bags']    += bags
-            g['qtls']    += qtls
-            g['min_date'] = io['date'] if (not g['min_date'] or io['date'] < g['min_date']) else g['min_date']
+            grp = groups[variety][key]
+            grp['bags']    += bags
+            grp['qtls']    += qtls
+            grp['min_date'] = io['date'] if (not grp['min_date'] or io['date'] < grp['min_date']) else grp['min_date']
 
             # Sales → Jama; everything else (Purchases, Sales Returns, Direct) → Kharchu
             if mode == 'Sales':
-                g['jama']    += amt
+                grp['jama']    += amt
             else:
-                g['kharchu'] += amt
+                grp['kharchu'] += amt
 
         # Serialize into ordered list
         result = []
         for variety in sorted(groups.keys()):
             subrows = []
             for (typ, mode) in sorted(groups[variety].keys()):
-                g = groups[variety][(typ, mode)]
+                grp = groups[variety][(typ, mode)]
                 # Build label cleanly — skip empty parts so no trailing spaces
                 parts = [p for p in [variety, typ, mode] if p]
                 label = '  '.join(parts)
@@ -1107,15 +1103,16 @@ def api_stocks_trial_balance():
                     'account':  label,
                     'type':     typ,
                     'mode':     mode,
-                    'bags':     round(g['bags'],  2),
-                    'qtls':     round(g['qtls'],  2),
-                    'jama':     round(g['jama'],  2),
-                    'kharchu':  round(g['kharchu'], 2),
-                    'min_date': parse_date(g['min_date']),
+                    'bags':     round(grp['bags'],  2),
+                    'qtls':     round(grp['qtls'],  2),
+                    'jama':     round(grp['jama'],  2),
+                    'kharchu':  round(grp['kharchu'], 2),
+                    'min_date': parse_date(grp['min_date']),
                 })
             result.append({'variety': variety, 'rows': subrows})
 
         return jsonify(result)
+
 
     except ImportError:
         return jsonify({'error': 'not_installed'})
@@ -1191,7 +1188,8 @@ def ctypes_select_file():
 
 @app.route('/api/select-database', methods=['POST'])
 def api_select_database():
-    global MDB_PATH, _db_cache_mtime
+    global MDB_PATH
+
     
     selected_path = ""
     
@@ -1274,13 +1272,12 @@ def api_select_database():
             save_config(selected_path)
             MDB_PATH = selected_path
             
-            with _db_cache_lock:
-                _db_cache.clear()
-                _db_cache_mtime = None
-                _db_cache_ready.clear()
-                
-            # Start warmup thread
-            threading.Thread(target=_warmup, daemon=True).start()
+            tenant_id = get_current_tenant_id()
+            with _tenant_cache_lock:
+                if tenant_id in _tenant_caches:
+                    _tenant_caches[tenant_id]["mtime"] = None
+                    _tenant_caches[tenant_id]["tables"].clear()
+
             
             return jsonify({
                 'status': 'ok',
@@ -1595,8 +1592,10 @@ def api_upload_database():
         out_f.write(mdb_bytes)
 
     # Invalidate cache for this tenant
-    with _db_cache_lock:
-        _db_cache.clear()
+    with _tenant_cache_lock:
+        if tenant_id in _tenant_caches:
+            _tenant_caches[tenant_id]["mtime"] = None
+            _tenant_caches[tenant_id]["tables"].clear()
 
     return jsonify({
         'status': 'ok',
@@ -1620,13 +1619,16 @@ def api_delete_database():
         except Exception as e:
             return jsonify({'status': 'error', 'message': f'Failed to delete File: {str(e)}'}), 500
 
-    with _db_cache_lock:
-        _db_cache.clear()
+    with _tenant_cache_lock:
+        if tenant_id in _tenant_caches:
+            _tenant_caches[tenant_id]["mtime"] = None
+            _tenant_caches[tenant_id]["tables"].clear()
 
     return jsonify({
         'status': 'ok',
-        'message': 'File file deleted successfully! You can now upload a new .mdb file.'
+        'message': 'File deleted successfully! You can now upload a new .mdb file.'
     })
+
 
 # ── SUPER-ADMIN SaaS MANAGEMENT PORTAL ───────────────────────────────────────
 @app.route('/super-admin', methods=['GET', 'POST'])
@@ -1744,7 +1746,8 @@ def api_users():
 # ── CLOUD SYNC ENDPOINT (AES-256 Encrypted + GZIP Compressed) ──────────────────
 @app.route('/api/sync-database', methods=['POST'])
 def api_sync_database():
-    global MDB_PATH, _db_cache_mtime
+    global MDB_PATH
+
     
     sync_token = request.headers.get('X-Sync-Token', '').strip()
     expected_token = os.environ.get('SYNC_SECRET_TOKEN', 'RiceMillSyncSecretToken2026!').strip()
@@ -1834,12 +1837,10 @@ def api_sync_database():
         if tenant_id == 'client_sgri':
             MDB_PATH = target_mdb
 
-        with _db_cache_lock:
-            _db_cache.clear()
-            _db_cache_mtime = None
-            _db_cache_ready.clear()
-
-        threading.Thread(target=_warmup, daemon=True).start()
+        with _tenant_cache_lock:
+            if tenant_id in _tenant_caches:
+                _tenant_caches[tenant_id]["mtime"] = None
+                _tenant_caches[tenant_id]["tables"].clear()
 
         return jsonify({
             'status': 'ok',
@@ -1847,6 +1848,7 @@ def api_sync_database():
             'filename': os.path.basename(target_mdb),
             'size_bytes': len(mdb_bytes)
         })
+
 
 
     except Exception as e:
