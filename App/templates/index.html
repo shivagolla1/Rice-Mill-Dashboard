@@ -2251,8 +2251,27 @@
 
   <div class="main">
 
+    <!-- Embedded Welcome Card for No-Database State -->
+    <div id="no-db-welcome-card" style="display:none; margin:30px auto; max-width:620px; background:var(--sur); border:1px solid var(--bdr); border-radius:14px; padding:44px 32px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,0.22);">
+      <div style="font-size:48px; margin-bottom:16px;">🌾</div>
+      <h2 style="font-size:22px; font-weight:700; color:var(--tx); margin-bottom:10px;">Welcome to {{ industry_name }}</h2>
+      <p style="font-size:13.5px; color:var(--tx2); margin-bottom:26px; line-height:1.6; max-width:480px; margin-left:auto; margin-right:auto;">
+        To view your live sales, purchases, journal entries, and stock reports, please upload your Access Database (<code>.mdb</code>) file.
+      </p>
+      <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+        <button type="button" onclick="openWebUploadModal()" style="background:var(--accent); color:#fff; border:none; padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; cursor:pointer; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(201,100,66,0.3);" onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='var(--accent)'">
+          📁 Upload Access Database (.mdb)
+        </button>
+        <a href="/logout" style="background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.3); padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s ease;" onmouseover="this.style.background='rgba(248,113,113,0.22)'" onmouseout="this.style.background='rgba(248,113,113,0.12)'">
+          🚪 Logout
+        </a>
+      </div>
+    </div>
+
+
     <!-- ORDERS -->
     <div class="page active" id="page-orders">
+
       <!-- Sticky title header only -->
       <div class="ph ph-sticky">
         <div class="print-brand-header">
@@ -4216,19 +4235,27 @@
 
     // Call checkUpdatesOnStartup on page load
     checkUpdatesOnStartup();
+    checkDatabaseStatusForWelcome();
   </script>
 
-  <!-- Web UI Direct FileUpload Modal -->
-  <div id="webUploadModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:var(--sur); border:1px solid var(--bdr); border-radius:14px; padding:28px; max-width:420px; width:100%; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
-      <h3 style="margin-bottom:8px; font-size:17px; color:var(--tx);">📁 Sync / Upload Database</h3>
+
+  <!-- Web UI Direct FileUpload Modal Window -->
+  <div id="webUploadModal" onclick="if(event.target === this) closeWebUploadModal()" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--sur); border:1px solid var(--bdr); border-radius:16px; padding:28px; max-width:440px; width:100%; box-shadow:0 16px 40px rgba(0,0,0,0.35); position:relative;">
+      
+      <!-- Modal Header with Title & Close Button -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--bdr);">
+        <h3 style="font-size:17px; font-weight:700; color:var(--tx); margin:0;">📁 Sync / Upload Database</h3>
+        <button type="button" onclick="closeWebUploadModal()" style="background:transparent; border:none; color:var(--tx3); font-size:20px; font-weight:700; cursor:pointer; line-height:1; padding:2px 6px; border-radius:4px; transition:all 0.15s ease;" onmouseover="this.style.color='var(--tx)'; this.style.background='var(--sur2)'" onmouseout="this.style.color='var(--tx3)'; this.style.background='transparent'" title="Close Window (Esc)">✖</button>
+      </div>
+
       <p style="font-size:13px; color:var(--tx2); margin-bottom:20px; line-height:1.5;">Select your Access file (<code>.mdb</code>) from your USB drive or computer to update the dashboard.</p>
       
       <div id="uploadStatusMsg" style="display:none; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;"></div>
 
-      <div style="border:2px dashed var(--bdr2); border-radius:10px; padding:24px; text-align:center; background:var(--bg); margin-bottom:20px; cursor:pointer;" onclick="document.getElementById('webMdbFile').click()">
+      <div style="border:2px dashed var(--bdr2); border-radius:12px; padding:26px; text-align:center; background:var(--bg); margin-bottom:20px; cursor:pointer; transition:all 0.2s ease;" onclick="document.getElementById('webMdbFile').click()" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--bdr2)'">
         <span style="font-size:36px; display:block; margin-bottom:8px;">📁</span>
-        <span style="font-size:13px; font-weight:600; color:var(--accent-lt);">Click to Select .mdb File</span>
+        <span style="font-size:13px; font-weight:600; color:var(--accent-lt);">Click or Drag & Drop .mdb File</span>
         <input type="file" id="webMdbFile" accept=".mdb" style="display:none;" onchange="handleMdbFileSelected(this)" />
         <div id="selectedFileName" style="font-size:12px; color:var(--tx2); margin-top:6px; font-family:var(--mono);">No file selected</div>
       </div>
@@ -4246,6 +4273,22 @@
 
 
   <script>
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWebUploadModal(); });
+
+    function checkDatabaseStatusForWelcome() {
+      fetch('/api/database-status')
+        .then(r => r.json())
+        .then(data => {
+          const card = document.getElementById('no-db-welcome-card');
+          if (data && data.exists === false) {
+            if (card) card.style.display = 'block';
+          } else {
+            if (card) card.style.display = 'none';
+          }
+        })
+        .catch(() => {});
+    }
+
     function openWebUploadModal() {
       document.getElementById('webUploadModal').style.display = 'flex';
       document.getElementById('uploadStatusMsg').style.display = 'none';
@@ -4255,6 +4298,7 @@
     function closeWebUploadModal() {
       document.getElementById('webUploadModal').style.display = 'none';
     }
+
     function handleMdbFileSelected(input) {
       if (input.files && input.files[0]) {
         const file = input.files[0];
