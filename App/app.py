@@ -303,50 +303,83 @@ def mdb_read(db, tname):
     return cols, types, rows
 
 
-def _cache_valid():
-    """Return True if in-memory cache matches the current file on disk."""
-    if not os.path.exists(MDB_PATH): return False
-    try:
-        return _db_cache_mtime == os.path.getmtime(MDB_PATH)
-    except: return False
+# ── PER-TENANT MDB ACCESS + CACHE ──────────────────────────────────────────────
+import threading
 
-def get_cached_table(tname):
-    """Return (cols, types, rows) from cache; re-parse file only when mtime changes."""
-    global _db_cache, _db_cache_mtime
-    with _db_cache_lock:
-        if _cache_valid() and tname in _db_cache:
-            return _db_cache[tname]
-    # Cache miss or stale → rebuild from disk
-    if not os.path.exists(MDB_PATH):
+_tenant_caches      = {}   # tenant_id → { "mtime": float, "tables": { tname: (cols, types, rows) } }
+_tenant_cache_lock = threading.Lock()
+
+def get_current_tenant_id():
+    """Resolve active tenant_id for the current request context."""
+    if hasattr(g, 'tenant_id') and g.tenant_id:
+        return g.tenant_id
+    if 'user' in session and isinstance(session['user'], dict):
+        return session['user'].get('tenant_id', 'client_sgri')
+    if 'tenant_id' in session and session['tenant_id']:
+        return session['tenant_id']
+    return 'client_sgri'
+
+def get_current_tenant_mdb_path():
+    """Return absolute path to the active tenant's Database.mdb file."""
+    tenant_id = get_current_tenant_id()
+    tenant_dir = tenants.get_tenant_dir(tenant_id)
+    tenant_mdb = os.path.join(tenant_dir, 'Database.mdb')
+    if os.path.exists(tenant_mdb):
+        return tenant_mdb
+    # Fallback to single-tenant MDB_PATH ONLY for primary tenant client_sgri
+    if tenant_id == 'client_sgri' and 'MDB_PATH' in globals() and MDB_PATH and os.path.exists(MDB_PATH):
+        return MDB_PATH
+    return tenant_mdb
+
+def get_cached_table(tname, tenant_id=None):
+    """Return (cols, types, rows) from per-tenant in-memory cache."""
+    if not tenant_id:
+        tenant_id = get_current_tenant_id()
+
+    mdb_path = get_current_tenant_mdb_path()
+    if not mdb_path or not os.path.exists(mdb_path):
         return [], [], []
+
     try:
-        db    = mdb_open(MDB_PATH)
-        tbls  = mdb_tables(db)
-        mtime = os.path.getmtime(MDB_PATH)
-        with _db_cache_lock:
-            # Only reset cache if file actually changed (avoid thundering herd)
-            if _db_cache_mtime != mtime:
-                _db_cache.clear()
-                _db_cache_mtime = mtime
-            if tname not in _db_cache:
-                if tname in tbls:
-                    _db_cache[tname] = mdb_read(db, tname)
-                else:
-                    _db_cache[tname] = ([], [], [])
-        return _db_cache.get(tname, ([], [], []))
-    except:
+        mtime = os.path.getmtime(mdb_path)
+    except Exception:
+        return [], [], []
+
+    with _tenant_cache_lock:
+        if tenant_id not in _tenant_caches:
+            _tenant_caches[tenant_id] = {"mtime": None, "tables": {}}
+        t_cache = _tenant_caches[tenant_id]
+
+        if t_cache["mtime"] == mtime and tname in t_cache["tables"]:
+            return t_cache["tables"][tname]
+
+    # Cache miss or modified file → parse table from disk
+    try:
+        db   = mdb_open(mdb_path)
+        tbls = mdb_tables(db)
+        with _tenant_cache_lock:
+            if t_cache["mtime"] != mtime:
+                t_cache["tables"].clear()
+                t_cache["mtime"] = mtime
+            if tname in tbls:
+                t_cache["tables"][tname] = mdb_read(db, tname)
+            else:
+                t_cache["tables"][tname] = ([], [], [])
+            return t_cache["tables"][tname]
+    except Exception:
         return [], [], []
 
 def get_cached_db():
-    """Return a dict-like helper that serves tables from cache."""
+    """Return a dict-like helper serving tables from the active tenant's database."""
     class CachedDB:
         def __init__(self):
             self._tables = None
         def tables(self):
             if self._tables is None:
-                if not os.path.exists(MDB_PATH): return []
+                mdb_path = get_current_tenant_mdb_path()
+                if not mdb_path or not os.path.exists(mdb_path): return []
                 try:
-                    db = mdb_open(MDB_PATH)
+                    db = mdb_open(mdb_path)
                     self._tables = mdb_tables(db)
                 except: self._tables = []
             return self._tables
@@ -356,28 +389,13 @@ def read_table(tname):
     """Open mdb and read one table. Returns (cols, types, rows) or ([], [], [])."""
     return get_cached_table(tname)
 
-def _warmup():
-    """Pre-parse the most-used tables in the background so first page load is fast."""
-    key_tables = ['IO', 'IO Details', 'Confirmation', 'Journal', 'IO DC', 'IO Other Details']
-    print('  [Warmup]  Warming up File cache...', flush=True)
-    for t in key_tables:
-        try:
-            get_cached_table(t)
-            print(f'  [OK]  Cached: {t}', flush=True)
-        except Exception as e:
-            print(f'  [Error]  Could not cache {t}: {e}', flush=True)
-    _db_cache_ready.set()
-    print('  [OK]  File cache ready — dashboard will be fast!', flush=True)
-
-# Start warmup immediately when app loads
-if os.path.exists(MDB_PATH):
-    _warmup_thread = threading.Thread(target=_warmup, daemon=True)
-    _warmup_thread.start()
 
 # ── ORDERS (IO + IO Details + Confirmation + Journal summary) ─────────────────
 def get_transactions(mode_filter):
-    if not os.path.exists(MDB_PATH):
-        return {'error':'file_not_found', 'path': MDB_PATH}
+    mdb_path = get_current_tenant_mdb_path()
+    if not os.path.exists(mdb_path):
+        return {'error':'file_not_found', 'path': mdb_path}
+
     try:
         # Use cached tables — parsed once on startup, instant on subsequent calls
         io_cols,  _, io_rows   = get_cached_table('IO')
@@ -619,7 +637,8 @@ def api_purchases():
 @app.route('/api/journal')
 def api_journal_all():
     """Return every Journal row for the Journal page."""
-    if not os.path.exists(MDB_PATH):
+    mdb_path = get_current_tenant_mdb_path()
+    if not os.path.exists(mdb_path):
         return jsonify({'error':'file_not_found'})
     try:
         jnl_cols, _, jnl_rows = get_cached_table('Journal')
@@ -670,8 +689,10 @@ def api_reports_summary():
     """Simplified P&L report and interactive Broker/Party analyzer."""
     if not SHOW_BI_REPORTS:
         return jsonify({'error': 'BI Reports are disabled.'}), 403
-    if not os.path.exists(MDB_PATH):
+    mdb_path = get_current_tenant_mdb_path()
+    if not os.path.exists(mdb_path):
         return jsonify({'error': 'file_not_found'})
+
     try:
         from_date_str = request.args.get('from', '')
         to_date_str = request.args.get('to', '')
@@ -911,11 +932,13 @@ def api_reports_summary():
 @app.route('/api/journal/<io_id>')
 def api_journal(io_id):
     """All Journal entries for one IO ID with days-to-pay calculation."""
-    if not os.path.exists(MDB_PATH):
+    mdb_path = get_current_tenant_mdb_path()
+    if not os.path.exists(mdb_path):
         return jsonify({'error':'file_not_found'})
     try:
         jnl_cols, _, jnl_rows = get_cached_table('Journal')
         io_cols,  _, io_rows  = get_cached_table('IO')
+
 
         j_ioid_i   = col_i(jnl_cols, ['io id','ioid'])
         j_date_i   = col_i(jnl_cols, ['transaction date','date','paydate'])
@@ -1003,8 +1026,10 @@ def api_stocks_trial_balance():
     """Schedule Trial Balance grouped by Variety → Type+Mode."""
     if not SHOW_STOCKS:
         return jsonify({'error': 'Stocks page is disabled.'}), 403
-    if not os.path.exists(MDB_PATH):
+    mdb_path = get_current_tenant_mdb_path()
+    if not os.path.exists(mdb_path):
         return jsonify({'error': 'file_not_found'})
+
     try:
         io_cols,  _, io_rows  = get_cached_table('IO')
         det_cols, _, det_rows = get_cached_table('IO Details')
@@ -1098,14 +1123,15 @@ def api_stocks_trial_balance():
 
 @app.route('/api/database-status')
 def api_database_status():
-    global MDB_PATH
-    exists = os.path.exists(MDB_PATH) if MDB_PATH else False
+    mdb_path = get_current_tenant_mdb_path()
+    exists = os.path.exists(mdb_path) if mdb_path else False
     return jsonify({
-        'path': MDB_PATH or '',
-        'filename': os.path.basename(MDB_PATH) if (MDB_PATH and exists) else '',
+        'path': mdb_path or '',
+        'filename': os.path.basename(mdb_path) if (mdb_path and exists) else '',
         'exists': exists,
-        'cache_ready': _db_cache_ready.is_set()
+        'cache_ready': True
     })
+
 
 def ctypes_select_file():
     import ctypes
