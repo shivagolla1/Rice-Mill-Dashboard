@@ -1723,8 +1723,6 @@ def api_super_admin_update_subscription():
 @app.route('/api/super-admin/download-uploader/<license_key>')
 @auth.login_required(role='super_admin')
 def api_super_admin_download_uploader(license_key):
-
-
     import io, zipfile
     from flask import Response
     tenant = tenants.get_tenant_by_key(license_key)
@@ -1741,19 +1739,52 @@ COMPANY_CODE={company_code}
 ENCRYPTION_KEY=RiceMillDashboardDefaultEncryptionKey2026!
 """
 
-    agent_path = os.path.join(EXE_DIR, 'local_sync_agent.py')
-    bat_path = os.path.join(EXE_DIR, 'sync_now.bat')
-    crypto_path = os.path.join(EXE_DIR, 'App', 'crypto_utils.py')
+    search_dirs = [os.path.dirname(EXE_DIR), EXE_DIR, os.getcwd(), os.path.dirname(os.path.abspath(__file__))]
+
+    def read_file_content(filename):
+        for b in search_dirs:
+            p = os.path.join(b, filename)
+            if os.path.exists(p):
+                try:
+                    with open(p, 'r', encoding='utf-8') as f:
+                        return f.read()
+                except Exception:
+                    with open(p, 'rb') as f:
+                        return f.read()
+        return None
+
+    shortcut_bat_content = """@echo off
+set "SCRIPT_DIR=%~dp0"
+set "TARGET=%SCRIPT_DIR%sync_now.bat"
+set "SHORTCUT=%USERPROFILE%\\Desktop\\Sync Database to Cloud.lnk"
+
+powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%TARGET%'; $s.WorkingDirectory='%SCRIPT_DIR%'; $s.Save()"
+
+echo.
+echo ====================================================
+echo  [SUCCESS] Desktop Shortcut Created!
+echo ====================================================
+echo.
+echo  You can now double-click "Sync Database to Cloud"
+echo  directly from your Windows Desktop.
+echo.
+pause
+"""
+
+    bat_code = read_file_content('sync_now.bat')
+    ps1_code = read_file_content('sync_uploader.ps1')
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.writestr('sync_config.txt', config_content)
-        if os.path.exists(agent_path):
-            zf.write(agent_path, 'local_sync_agent.py')
-        if os.path.exists(bat_path):
-            zf.write(bat_path, 'sync_now.bat')
-        if os.path.exists(crypto_path):
-            zf.write(crypto_path, 'App/crypto_utils.py')
+        zf.writestr('create_shortcut.bat', shortcut_bat_content)
+        if ps1_code:
+            zf.writestr('sync_uploader.ps1', ps1_code)
+        if bat_code:
+            zf.writestr('sync_now.bat', bat_code)
+
+
+
 
     zip_buffer.seek(0)
     safe_filename = f"{company_code}_2Click_Uploader.zip"
@@ -1763,6 +1794,7 @@ ENCRYPTION_KEY=RiceMillDashboardDefaultEncryptionKey2026!
         mimetype='application/zip',
         headers={'Content-Disposition': f'attachment; filename={safe_filename}'}
     )
+
 
 
 
