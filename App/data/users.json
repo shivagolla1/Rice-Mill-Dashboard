@@ -1,0 +1,14 @@
+{
+  "admin": {
+    "username": "admin",
+    "password_hash": "37c6125602ea93122985868b93112889$02b721a1af73a5cae018e85f6f30a9f6ab91f530426cee65a86a1dda0943cbfc",
+    "role": "admin",
+    "name": "Administrator"
+  },
+  "staff": {
+    "username": "staff",
+    "password_hash": "aa386b4aa67f10e6f4dcfb76f1fa8de2$c198acb1d5225dd014f91a58651a3124cbbe02b1dd308b93aaf7838acc46c993",
+    "role": "staff",
+    "name": "Mill Staff"
+  }
+}

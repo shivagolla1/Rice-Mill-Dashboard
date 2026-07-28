@@ -155,16 +155,33 @@ def sync_now(cfg=None):
         encrypted_payload = crypto_utils.encrypt_data(compressed_bytes, enc_key)
         print(f"  * AES-256 encrypted payload ready")
 
-        # Send in 256 KB chunks to bypass Windows 10053 socket aborts and HTTP proxy limits
-        CHUNK_SIZE = 256 * 1024
+        import requests
+        session = requests.Session()
+        endpoint = f"{cloud_url}/api/sync-database"
+        headers = {
+            'X-Sync-Token': sync_token,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) RiceMillSyncAgent/1.0'
+        }
+
+        # Try Fast Single Multipart Upload first (takes 2-5 seconds!)
+        print(f"  * Uploading payload to cloud server...")
+        try:
+            files = {'file': ('database.enc', encrypted_payload, 'application/octet-stream')}
+            resp = session.post(endpoint, files=files, headers=headers, timeout=120)
+            if resp.status_code == 200:
+                res = resp.json()
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [SUCCESS] Database synced to cloud in seconds! ({res.get('size_bytes', 0)} bytes)")
+                return True
+        except Exception as fast_err:
+            print(f"  * Single upload fallback trigger: {fast_err}")
+            print(f"  * Switching to chunked upload mode...")
+
+        # Fallback: Chunked Upload mode if single request fails
+        CHUNK_SIZE = 512 * 1024
         total_chunks = (len(encrypted_payload) + CHUNK_SIZE - 1) // CHUNK_SIZE
         upload_id = hashlib.md5(f"{time.time()}".encode()).hexdigest()[:10]
 
-        import base64, requests
-        session = requests.Session()
-        endpoint = f"{cloud_url}/api/sync-database"
-
-        print(f"  * Uploading payload in {total_chunks} chunks (256 KB each)...")
+        print(f"  * Uploading payload in {total_chunks} chunks...")
         resp = None
 
         for i in range(total_chunks):
@@ -177,12 +194,8 @@ def sync_now(cfg=None):
                 'total_chunks': total_chunks,
                 'upload_id': upload_id
             }
-            headers = {
-                'Content-Type': 'application/json',
-                'X-Sync-Token': sync_token,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) RiceMillSyncAgent/1.0'
-            }
-            resp = session.post(endpoint, json=json_body, headers=headers, timeout=120)
+            headers['Content-Type'] = 'application/json'
+            resp = session.post(endpoint, json=json_body, headers=headers, timeout=60)
 
             if resp.status_code != 200:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] [FAILED] Chunk {i+1}/{total_chunks} failed: {resp.text}")
@@ -193,11 +206,8 @@ def sync_now(cfg=None):
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [SUCCESS] Database synced to cloud! ({res.get('size_bytes', 0)} bytes)")
             return True
         else:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [FAILED] Upload failed on final chunk")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [FAILED] Upload failed")
             return False
-
-
-
 
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [ERROR] Sync failed: {e}")

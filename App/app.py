@@ -54,9 +54,13 @@ app  = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = os.environ.get('SESSION_SECRET', 'RiceMillDashboardSessionSecret2026!')
 VERSION = "1.1.0"
 
-# Import Crypto & Auth helpers (resolved from sys.path)
+# Import Crypto, Auth & Tenants helpers (resolved from sys.path)
 import crypto_utils
 import auth
+import tenants
+
+SUPER_ADMIN_PASSWORD = os.environ.get('SUPER_ADMIN_PASSWORD', 'SuperAdminPass2026!').strip()
+
 
 
 # ── FEATURE FLAGS (Hardcode to True/False for client distribution packages) ──
@@ -1443,26 +1447,192 @@ def serve_logo():
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'GET':
-        if auth.get_current_user():
+        if 'user' in session:
             return redirect(url_for('index'))
         return render_template('login.html')
         
+    company_code = request.form.get('company_code', 'SGRI').strip()
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '').strip()
     
-    user = auth.authenticate_user(username, password)
+    user, err_msg = auth.authenticate_user(company_code, username, password)
     if user:
-        session['user'] = user['username']
-        session['role'] = user['role']
+        session['user'] = user
+        session['role'] = user.get('role', 'staff')
+        session['tenant_id'] = user.get('tenant_id', 'client_sgri')
+        session['company_code'] = user.get('company_code', 'SGRI')
+        session['company_name'] = user.get('company_name', 'Rice Mill')
         next_url = request.args.get('next') or url_for('index')
         return redirect(next_url)
     
-    return render_template('login.html', error="Invalid username or password.")
+    return render_template('login.html', error=err_msg or "Invalid login credentials.", company_code=company_code)
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login_page'))
+
+@app.route('/api/forgot-password', methods=['POST'])
+def api_forgot_password():
+    data = request.get_json() or {}
+    company_code = data.get('company_code', '').strip()
+    license_key = data.get('license_key', '').strip()
+    username = data.get('username', 'admin').strip()
+    new_password = data.get('new_password', '').strip()
+
+    if not company_code or not license_key or not new_password:
+        return jsonify({'status': 'error', 'message': 'Company Code, License Key, and New Password are required.'}), 400
+
+    success, msg = auth.reset_password_with_license_key(company_code, license_key, username, new_password)
+    if success:
+        return jsonify({'status': 'ok', 'message': msg})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
+@app.route('/api/change-password', methods=['POST'])
+def api_change_password():
+    if 'user' not in session or not isinstance(session['user'], dict):
+        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+    
+    data = request.get_json() or {}
+    old_password = data.get('old_password', '').strip()
+    new_password = data.get('new_password', '').strip()
+
+    tenant_id = session['user'].get('tenant_id', 'client_sgri')
+    username = session['user'].get('username')
+
+    success, msg = auth.change_user_password(tenant_id, username, old_password, new_password)
+    if success:
+        return jsonify({'status': 'ok', 'message': msg})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
+# ── DIRECT WEB UI DATABASE UPLOAD ENDPOINT (Zero Desktop Software Required) ────
+@app.route('/api/upload-database', methods=['POST'])
+def api_upload_database():
+    if 'user' not in session or not isinstance(session['user'], dict):
+        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+
+    tenant_id = session['user'].get('tenant_id', 'client_sgri')
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+
+    f = request.files['file']
+    raw_bytes = f.read()
+    if not raw_bytes:
+        return jsonify({'status': 'error', 'message': 'Uploaded file is empty'}), 400
+
+    tenant = tenants.get_tenant_by_id(tenant_id)
+    enc_key = tenant.get('encryption_key', '') if tenant else ''
+
+    # Attempt decrypt if encrypted via Web Crypto API
+    try:
+        decrypted_bytes = crypto_utils.decrypt_data(raw_bytes, enc_key)
+    except Exception:
+        decrypted_bytes = raw_bytes
+
+    # Attempt decompress if GZIP compressed
+    try:
+        mdb_bytes = gzip.decompress(decrypted_bytes)
+    except Exception:
+        mdb_bytes = decrypted_bytes
+
+    tenant_dir = tenants.get_tenant_dir(tenant_id)
+    target_mdb = os.path.join(tenant_dir, 'Database.mdb')
+
+    with open(target_mdb, 'wb') as out_f:
+        out_f.write(mdb_bytes)
+
+    # Invalidate cache for this tenant
+    with _db_cache_lock:
+        _db_cache.clear()
+
+    return jsonify({
+        'status': 'ok',
+        'message': 'Database updated successfully! Reports will now reflect the new data.',
+        'filename': f.filename,
+        'size_bytes': len(mdb_bytes)
+    })
+
+# ── SUPER-ADMIN SaaS MANAGEMENT PORTAL ───────────────────────────────────────
+@app.route('/super-admin', methods=['GET', 'POST'])
+def super_admin_page():
+    if request.method == 'POST':
+        entered_pass = request.form.get('password', '').strip()
+        if entered_pass == SUPER_ADMIN_PASSWORD:
+            session['is_super_admin'] = True
+            return redirect(url_for('super_admin_page'))
+        return render_template('super_admin_login.html', error="Invalid Super-Admin Security Password.")
+
+    if not session.get('is_super_admin'):
+        return render_template('super_admin_login.html')
+
+    all_tenants = tenants.load_tenants()
+    tenant_list = list(all_tenants.values())
+    return render_template('super_admin.html', tenants=tenant_list, super_admin_pass=SUPER_ADMIN_PASSWORD)
+
+@app.route('/api/super-admin/add-client', methods=['POST'])
+def api_super_admin_add_client():
+    if not session.get('is_super_admin'):
+        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
+
+    data = request.get_json() or {}
+    company_name = data.get('company_name', '').strip()
+    company_code = data.get('company_code', '').strip().upper()
+    admin_password = data.get('admin_password', '').strip()
+    months = int(data.get('months', 12))
+    show_stocks = data.get('show_stocks', False)
+    show_bi_reports = data.get('show_bi_reports', False)
+
+    if not company_name or not company_code or not admin_password:
+        return jsonify({'status': 'error', 'message': 'Company Name, Code, and Admin Password are required'}), 400
+
+    success, msg, tenant_info = tenants.create_tenant(company_name, company_code, admin_password, months, show_stocks, show_bi_reports)
+    if success:
+        return jsonify({'status': 'ok', 'message': msg, 'tenant': tenant_info})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
+@app.route('/api/super-admin/reset-password', methods=['POST'])
+def api_super_admin_reset_password():
+    if not session.get('is_super_admin'):
+        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
+
+    data = request.get_json() or {}
+    company_code = data.get('company_code', '').strip()
+    username = data.get('username', 'admin').strip()
+    new_password = data.get('new_password', '').strip()
+
+    tenant = tenants.get_tenant_by_code(company_code)
+    if not tenant:
+        return jsonify({'status': 'error', 'message': f"Company Code '{company_code}' not found"}), 400
+
+    tenant_id = tenant.get('tenant_id')
+    users = auth.load_tenant_users(tenant_id)
+    username_clean = username.lower()
+    
+    if username_clean not in users:
+        users[username_clean] = {'username': username_clean, 'password_hash': auth.hash_password(new_password), 'role': 'admin', 'name': username_clean.capitalize()}
+    else:
+        users[username_clean]['password_hash'] = auth.hash_password(new_password)
+
+    auth.save_tenant_users(tenant_id, users)
+    return jsonify({'status': 'ok', 'message': f"Password for {username} @ {company_code} reset successfully!"})
+
+@app.route('/api/super-admin/update-subscription', methods=['POST'])
+def api_super_admin_update_subscription():
+    if not session.get('is_super_admin'):
+        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
+
+    data = request.get_json() or {}
+    license_key = data.get('license_key', '').strip()
+    status = data.get('status')
+    expiry_date = data.get('expiry_date')
+    show_stocks = data.get('show_stocks')
+    show_bi_reports = data.get('show_bi_reports')
+
+    success, msg = tenants.update_tenant_status(license_key, status, expiry_date, show_stocks, show_bi_reports)
+    if success:
+        return jsonify({'status': 'ok', 'message': msg})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
 
 @app.route('/api/users', methods=['GET', 'POST'])
 @auth.login_required(role='admin')

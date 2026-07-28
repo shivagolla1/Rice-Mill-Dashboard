@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Super-Admin Portal — Rice Mill Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+      padding: 36px 32px; max-width: 400px; width: 100%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+    h2 { font-size: 20px; margin-bottom: 6px; color: #38bdf8; text-align: center; }
+    p { font-size: 13px; color: #94a3b8; text-align: center; margin-bottom: 24px; }
+    .alert { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 18px; }
+    label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 6px; font-weight: 600; }
+    input[type="password"] {
+      width: 100%; padding: 12px 14px; background: #0f172a; border: 1px solid #475569;
+      border-radius: 8px; color: #f8fafc; font-size: 14px; outline: none; margin-bottom: 20px;
+    }
+    input:focus { border-color: #38bdf8; }
+    .btn {
+      width: 100%; background: #0284c7; color: white; border: none; padding: 12px;
+      border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #0369a1; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🛡️ Super-Admin Console</h2>
+    <p>Enter Master Security Key to manage clients</p>
+    {% if error %}
+      <div class="alert">{{ error }}</div>
+    {% endif %}
+    <form method="POST" action="/super-admin">
+      <label>Security Password</label>
+      <input type="password" name="password" placeholder="••••••••" required autofocus />
+      <button type="submit" class="btn">Authenticate</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -48,7 +48,7 @@
 
     .login-card {
       width: 100%;
-      max-width: 400px;
+      max-width: 410px;
       background: var(--sur);
       border: 1px solid var(--bdr);
       border-radius: 14px;
@@ -90,9 +90,10 @@
       display: none;
     }
     .alert.show { display: block; }
+    .alert.success { background: rgba(40, 140, 60, 0.1); color: #1e6028; border-color: rgba(40, 140, 60, 0.3); }
 
     .form-group {
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
 
     .form-lbl {
@@ -140,16 +141,27 @@
     .btn:hover {
       background: var(--accent-lt);
     }
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
 
-    .footer-note {
-      text-align: center;
-      margin-top: 20px;
+    .forgot-link {
+      display: block;
+      text-align: right;
       font-size: 12px;
-      color: var(--tx3);
+      color: var(--accent);
+      text-decoration: none;
+      margin-top: -6px;
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center;
+      padding: 20px; z-index: 1000;
+    }
+    .modal-card {
+      background: var(--sur); border: 1px solid var(--bdr); border-radius: 12px;
+      padding: 24px; max-width: 380px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
   </style>
 </head>
@@ -158,17 +170,22 @@
     <div class="header">
       <span class="header-icon">🌾</span>
       <div class="title">Rice Mill Dashboard</div>
-      <div class="subtitle">Sign in to continue</div>
+      <div class="subtitle">Sign in to your mill account</div>
     </div>
 
     <div class="alert {% if error %}show{% endif %}" id="alertBox">
-      {{ error or "Invalid username or password" }}
+      {{ error or "Invalid login credentials" }}
     </div>
 
     <form id="loginForm" method="POST" action="/login">
       <div class="form-group">
+        <label class="form-lbl" for="company_code">Company Code</label>
+        <input type="text" id="company_code" name="company_code" placeholder="e.g. SGRI or RAMA" value="{{ company_code or 'SGRI' }}" required autofocus style="text-transform: uppercase;" />
+      </div>
+
+      <div class="form-group">
         <label class="form-lbl" for="username">Username</label>
-        <input type="text" id="username" name="username" placeholder="e.g. admin or staff" required autofocus autocomplete="username" />
+        <input type="text" id="username" name="username" placeholder="e.g. admin or staff" required autocomplete="username" />
       </div>
 
       <div class="form-group">
@@ -176,12 +193,92 @@
         <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password" />
       </div>
 
+      <a class="forgot-link" onclick="openForgotModal()">Forgot Username / Password?</a>
+
       <button type="submit" class="btn" id="loginBtn">Sign In</button>
     </form>
+  </div>
 
-    <div class="footer-note">
-      Contact system administrator if you forgot your credentials.
+  <!-- Forgot Password / License Key Verification Modal -->
+  <div class="modal-overlay" id="forgotModal">
+    <div class="modal-card">
+      <h3 style="margin-bottom: 8px; font-size: 16px;">🔑 Reset Password with License Key</h3>
+      <p style="font-size: 12px; color: var(--tx2); margin-bottom: 16px;">Enter your Company Code & License Key to reset your password.</p>
+      
+      <div id="resetMsg" style="display:none; padding:8px 12px; border-radius:6px; font-size:12px; margin-bottom:12px;"></div>
+
+      <div class="form-group">
+        <label class="form-lbl">Company Code</label>
+        <input type="text" id="resetCompany" placeholder="e.g. SGRI" style="text-transform: uppercase;" />
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">License Key</label>
+        <input type="text" id="resetLicenseKey" placeholder="e.g. RM-SGRI-2026" />
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Username to Reset</label>
+        <input type="text" id="resetUsername" value="admin" />
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">New Password</label>
+        <input type="password" id="resetNewPass" placeholder="Enter new password" />
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:16px;">
+        <button type="button" class="btn" style="background:var(--tx3);" onclick="closeForgotModal()">Cancel</button>
+        <button type="button" class="btn" onclick="submitResetPassword()">Reset Password</button>
+      </div>
     </div>
   </div>
+
+  <script>
+    function openForgotModal() {
+      document.getElementById('resetCompany').value = document.getElementById('company_code').value.toUpperCase();
+      document.getElementById('forgotModal').style.display = 'flex';
+    }
+    function closeForgotModal() {
+      document.getElementById('forgotModal').style.display = 'none';
+    }
+    async function submitResetPassword() {
+      const company_code = document.getElementById('resetCompany').value.trim();
+      const license_key = document.getElementById('resetLicenseKey').value.trim();
+      const username = document.getElementById('resetUsername').value.trim();
+      const new_password = document.getElementById('resetNewPass').value.trim();
+      const msgBox = document.getElementById('resetMsg');
+
+      if (!company_code || !license_key || !new_password) {
+        msgBox.style.display = 'block';
+        msgBox.style.background = 'rgba(168,56,32,0.1)';
+        msgBox.style.color = '#a83820';
+        msgBox.innerText = 'Please fill in all fields.';
+        return;
+      }
+
+      try {
+        const resp = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ company_code, license_key, username, new_password })
+        });
+        const res = await resp.json();
+        msgBox.style.display = 'block';
+        if (resp.ok && res.status === 'ok') {
+          msgBox.style.background = 'rgba(40,140,60,0.1)';
+          msgBox.style.color = '#1e6028';
+          msgBox.innerText = res.message;
+          setTimeout(() => { closeForgotModal(); }, 2000);
+        } else {
+          msgBox.style.background = 'rgba(168,56,32,0.1)';
+          msgBox.style.color = '#a83820';
+          msgBox.innerText = res.message || 'Reset failed';
+        }
+      } catch (err) {
+        msgBox.style.display = 'block';
+        msgBox.style.background = 'rgba(168,56,32,0.1)';
+        msgBox.style.color = '#a83820';
+        msgBox.innerText = 'Network error. Try again.';
+      }
+    }
+  </script>
 </body>
 </html>

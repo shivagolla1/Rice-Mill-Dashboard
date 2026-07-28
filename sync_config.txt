@@ -2,7 +2,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Full path to your local .mdb database file on PC or USB drive
-MDB_PATH = D:\SGRI\SGRI 2025-2026.mdb
+MDB_PATH = D:\SGRI\Data\SGRI 2025-2026.mdb
 
 # Your Railway cloud app URL (e.g. https://rice-mill-dashboard.up.railway.app)
 CLOUD_URL = https://ricemilldashboard.up.railway.app
