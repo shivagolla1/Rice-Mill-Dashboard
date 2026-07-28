@@ -183,13 +183,22 @@ def login_required(role=None):
             if not enable_auth:
                 return f(*args, **kwargs)
             
-            if 'user' not in session:
+            is_super = session.get('is_super_admin', False) or (isinstance(session.get('user'), dict) and session.get('user', {}).get('role') == 'super_admin')
+
+            if role == 'super_admin':
+                if not is_super:
+                    if request.path.startswith('/api/'):
+                        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
+                    return render_template('super_admin_login.html')
+                return f(*args, **kwargs)
+
+            if 'user' not in session and not is_super:
                 if request.path.startswith('/api/'):
                     return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
                 return redirect(url_for('login_page', next=request.url))
 
-
-            if role and session.get('user', {}).get('role') != role and session.get('user', {}).get('role') != 'super_admin':
+            user_role = session.get('user', {}).get('role') if isinstance(session.get('user'), dict) else ''
+            if role and user_role != role and not is_super:
                 if request.path.startswith('/api/'):
                     return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
                 try:
@@ -197,7 +206,7 @@ def login_required(role=None):
                 except Exception:
                     return "<h3 style='font-family:sans-serif; text-align:center; margin-top:50px;'>403 Forbidden: Admin access required</h3>", 403
 
-
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+

@@ -1637,6 +1637,7 @@ def super_admin_page():
         entered_pass = request.form.get('password', '').strip()
         if entered_pass == SUPER_ADMIN_PASSWORD:
             session['is_super_admin'] = True
+            session['user'] = {'username': 'superadmin', 'role': 'super_admin', 'name': 'Super Admin'}
             return redirect(url_for('super_admin_page'))
         return render_template('super_admin_login.html', error="Invalid Super-Admin Security Password.")
 
@@ -1648,10 +1649,8 @@ def super_admin_page():
     return render_template('super_admin.html', tenants=tenant_list, super_admin_pass=SUPER_ADMIN_PASSWORD)
 
 @app.route('/api/super-admin/update-company-name', methods=['POST'])
+@auth.login_required(role='super_admin')
 def api_super_admin_update_company_name():
-    if not session.get('is_super_admin'):
-        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
-
     data = request.get_json() or {}
     license_key = data.get('license_key', '').strip()
     new_company_name = data.get('company_name', '').strip()
@@ -1663,10 +1662,8 @@ def api_super_admin_update_company_name():
 
 
 @app.route('/api/super-admin/add-client', methods=['POST'])
+@auth.login_required(role='super_admin')
 def api_super_admin_add_client():
-    if not session.get('is_super_admin'):
-        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
-
     data = request.get_json() or {}
     company_name = data.get('company_name', '').strip()
     company_code = data.get('company_code', '').strip().upper()
@@ -1684,10 +1681,8 @@ def api_super_admin_add_client():
     return jsonify({'status': 'error', 'message': msg}), 400
 
 @app.route('/api/super-admin/reset-password', methods=['POST'])
+@auth.login_required(role='super_admin')
 def api_super_admin_reset_password():
-    if not session.get('is_super_admin'):
-        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
-
     data = request.get_json() or {}
     company_code = data.get('company_code', '').strip()
     username = data.get('username', 'admin').strip()
@@ -1710,10 +1705,8 @@ def api_super_admin_reset_password():
     return jsonify({'status': 'ok', 'message': f"Password for {username} @ {company_code} reset successfully!"})
 
 @app.route('/api/super-admin/update-subscription', methods=['POST'])
+@auth.login_required(role='super_admin')
 def api_super_admin_update_subscription():
-    if not session.get('is_super_admin'):
-        return jsonify({'status': 'error', 'message': 'Super-Admin authorization required'}), 403
-
     data = request.get_json() or {}
     license_key = data.get('license_key', '').strip()
     status = data.get('status')
@@ -1730,6 +1723,8 @@ def api_super_admin_update_subscription():
 @app.route('/api/super-admin/download-uploader/<license_key>')
 @auth.login_required(role='super_admin')
 def api_super_admin_download_uploader(license_key):
+
+
     import io, zipfile
     from flask import Response
     tenant = tenants.get_tenant_by_key(license_key)
