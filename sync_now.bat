@@ -23,7 +23,8 @@ if errorlevel 1 (
     "%PYTHON%" -m pip install --quiet requests cryptography
 )
 
-"%PYTHON%" "%SCRIPT_DIR%local_sync_agent.py" --once
+"%PYTHON%" "%SCRIPT_DIR%local_sync_agent.py" --pick
 
 echo.
 pause
+

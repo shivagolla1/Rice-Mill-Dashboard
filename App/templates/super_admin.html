@@ -100,11 +100,13 @@
               <span class="badge badge-expired">{{ t.status }}</span>
             {% endif %}
           </td>
-          <td style="display:flex; gap:6px;">
+          <td style="display:flex; gap:6px; flex-wrap:wrap;">
             <button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="openEditNameModal('{{ t.license_key }}', '{{ t.company_name|e }}')">✏️ Edit Name</button>
             <button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="openResetModal('{{ t.company_code }}')">🔑 Reset Credentials</button>
             <button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="openExtendModal('{{ t.license_key }}', '{{ t.expiry_date }}', '{{ t.status }}')">📅 Subscription</button>
+            <a href="/api/super-admin/download-uploader/{{ t.license_key }}" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);" title="Download pre-configured 2-Click Desktop Uploader for {{ t.company_name|e }}">⬇️ Download Uploader</a>
           </td>
+
 
         </tr>
         {% endfor %}

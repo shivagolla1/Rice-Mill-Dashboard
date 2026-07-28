@@ -1727,20 +1727,48 @@ def api_super_admin_update_subscription():
     return jsonify({'status': 'error', 'message': msg}), 400
 
 
-@app.route('/api/users', methods=['GET', 'POST'])
-@auth.login_required(role='admin')
-def api_users():
-    tenant_id = session.get('tenant_id', 'client_sgri')
-    if request.method == 'GET':
-        users = auth.load_tenant_users(tenant_id)
-        clean_users = [{'username': u['username'], 'role': u['role'], 'name': u.get('name', u['username'])} for u in users.values()]
-        return jsonify(clean_users)
-    
-    data = request.get_json() or {}
-    success, msg = auth.create_tenant_user(tenant_id, data.get('username', ''), data.get('password', ''), data.get('role', 'staff'), data.get('name'))
-    if success:
-        return jsonify({'status': 'ok', 'message': msg})
-    return jsonify({'status': 'error', 'message': msg}), 400
+@app.route('/api/super-admin/download-uploader/<license_key>')
+@auth.login_required(role='super_admin')
+def api_super_admin_download_uploader(license_key):
+    import io, zipfile
+    from flask import Response
+    tenant = tenants.get_tenant_by_key(license_key)
+    if not tenant:
+        return jsonify({'status': 'error', 'message': 'Client mill not found'}), 404
+
+    company_code = tenant.get('company_code', 'MILL')
+    company_name = tenant.get('company_name', 'Rice Mill')
+
+    config_content = f"""# Rice Mill Dashboard — 2-Click Desktop Sync Configuration
+CLOUD_URL=https://ricemilldashboard.up.railway.app
+LICENSE_KEY={license_key}
+COMPANY_CODE={company_code}
+ENCRYPTION_KEY=RiceMillDashboardDefaultEncryptionKey2026!
+"""
+
+    agent_path = os.path.join(EXE_DIR, 'local_sync_agent.py')
+    bat_path = os.path.join(EXE_DIR, 'sync_now.bat')
+    crypto_path = os.path.join(EXE_DIR, 'App', 'crypto_utils.py')
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr('sync_config.txt', config_content)
+        if os.path.exists(agent_path):
+            zf.write(agent_path, 'local_sync_agent.py')
+        if os.path.exists(bat_path):
+            zf.write(bat_path, 'sync_now.bat')
+        if os.path.exists(crypto_path):
+            zf.write(crypto_path, 'App/crypto_utils.py')
+
+    zip_buffer.seek(0)
+    safe_filename = f"{company_code}_2Click_Uploader.zip"
+
+    return Response(
+        zip_buffer.getvalue(),
+        mimetype='application/zip',
+        headers={'Content-Disposition': f'attachment; filename={safe_filename}'}
+    )
+
 
 
 # ── CLOUD SYNC ENDPOINT (AES-256 Encrypted + GZIP Compressed) ──────────────────
@@ -1823,10 +1851,18 @@ def api_sync_database():
         except Exception:
             mdb_bytes = decrypted_bytes
 
-        # Resolve target tenant directory from license key or sync token
-        tenant_key = request.headers.get('X-License-Key') or sync_token
-        tenant = tenants.get_tenant_by_key(tenant_key)
+        # Resolve target tenant directory from license key, company code, or session
+        tenant_key = request.headers.get('X-License-Key', '').strip()
+        company_code = request.headers.get('X-Company-Code', '').strip()
+
+        tenant = (tenants.get_tenant_by_key(tenant_key) if tenant_key else None) or \
+                 (tenants.get_tenant_by_code(company_code) if company_code else None)
+
+        if not tenant and 'user' in session and isinstance(session['user'], dict):
+            tenant = tenants.get_tenant_by_id(session['user'].get('tenant_id'))
+
         tenant_id = tenant.get('tenant_id', 'client_sgri') if tenant else 'client_sgri'
+        company_name = tenant.get('company_name', 'Rice Mill') if tenant else 'Rice Mill'
         
         tenant_dir = tenants.get_tenant_dir(tenant_id)
         target_mdb = os.path.join(tenant_dir, 'Database.mdb')
@@ -1844,10 +1880,12 @@ def api_sync_database():
 
         return jsonify({
             'status': 'ok',
-            'message': 'File synced successfully',
+            'message': f'Database synced successfully for {company_name}',
+            'company_name': company_name,
             'filename': os.path.basename(target_mdb),
             'size_bytes': len(mdb_bytes)
         })
+
 
 
 
