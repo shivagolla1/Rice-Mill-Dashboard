@@ -37,7 +37,8 @@ if sys.stdout is None or not hasattr(sys.stdout, 'write'):
 if sys.stderr is None or not hasattr(sys.stderr, 'write'):
     sys.stderr = DummyWriter()
 
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, g
+
 import os, csv, re, io, json, subprocess, time, threading, shutil, gzip
 from datetime import datetime, date as dobj
 
@@ -394,7 +395,8 @@ def read_table(tname):
 def get_transactions(mode_filter):
     mdb_path = get_current_tenant_mdb_path()
     if not os.path.exists(mdb_path):
-        return {'error':'file_not_found', 'path': mdb_path}
+        return []
+
 
     try:
         # Use cached tables — parsed once on startup, instant on subsequent calls
@@ -1920,9 +1922,15 @@ def activate_license():
 def index():
     if is_first_run():
         return redirect(url_for('setup'))
-    name = CFG.get('INDUSTRY_NAME', 'Rice Mill')
-    
-    # Get computer name for stable network access URL
+
+    user = session.get('user', {})
+    tenant_id = user.get('tenant_id', 'client_sgri') if isinstance(user, dict) else session.get('tenant_id', 'client_sgri')
+    tenant = tenants.get_tenant_by_id(tenant_id) or tenants.get_tenant_by_code(session.get('company_code', 'SGRI'))
+
+    name = (tenant.get('company_name') if tenant and tenant.get('company_name') else None) or session.get('company_name') or CFG.get('INDUSTRY_NAME', 'Rice Mill')
+    show_stocks = tenant.get('show_stocks', False) if tenant else SHOW_STOCKS
+    show_bi_reports = tenant.get('show_bi_reports', False) if tenant else SHOW_BI_REPORTS
+
     import socket
     try:
         hostname = socket.gethostname()
@@ -1935,12 +1943,14 @@ def index():
         industry_name=name,
         industry_address=CFG.get('INDUSTRY_ADDRESS', ''),
         currency_symbol=CFG.get('CURRENCY_SYMBOL', 'Rs.'),
-        app_title=CFG.get('APP_TITLE', '').strip() or name,
+        app_title=name,
         industry_logo='logo',
         network_url=network_url,
-        show_bi_reports=SHOW_BI_REPORTS,
-        show_stocks=SHOW_STOCKS
+        show_bi_reports=show_bi_reports,
+        show_stocks=show_stocks,
+        user=user
     )
+
 
 def download_url(url, timeout=10):
     import urllib.request
