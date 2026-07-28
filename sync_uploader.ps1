@@ -1,6 +1,5 @@
 # Rice Mill Dashboard - Native 2-Click Cloud Sync Uploader (Zero-Python Required)
 Add-Type -AssemblyName System.Windows.Forms
-
 Add-Type -AssemblyName System.IO.Compression
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -9,6 +8,7 @@ $ConfigFile = Join-Path $ScriptDir "sync_config.txt"
 $CloudUrl = "https://ricemilldashboard.up.railway.app"
 $LicenseKey = ""
 $CompanyCode = ""
+$SyncToken = "RiceMillSyncSecretToken2026!"
 
 if (Test-Path $ConfigFile) {
     Get-Content $ConfigFile | ForEach-Object {
@@ -20,6 +20,7 @@ if (Test-Path $ConfigFile) {
             if ($k -eq "CLOUD_URL") { $CloudUrl = $v.TrimEnd('/') }
             if ($k -eq "LICENSE_KEY") { $LicenseKey = $v }
             if ($k -eq "COMPANY_CODE") { $CompanyCode = $v }
+            if ($k -eq "SYNC_SECRET_TOKEN") { $SyncToken = $v }
         }
     }
 }
@@ -72,7 +73,7 @@ try {
     $WebClient.Headers.Add("Content-Type", "multipart/form-data; boundary=$Boundary")
     $WebClient.Headers.Add("X-License-Key", $LicenseKey)
     $WebClient.Headers.Add("X-Company-Code", $CompanyCode)
-    $WebClient.Headers.Add("X-Sync-Token", "RiceMillSyncSecretToken2026!@#")
+
 
     $ResponseBytes = $WebClient.UploadData($Endpoint, "POST", $BodyBytes)
     $ResponseStr = [System.Text.Encoding]::UTF8.GetString($ResponseBytes)
@@ -86,6 +87,14 @@ try {
     [System.Windows.Forms.MessageBox]::Show("Database File '$FileName' Synced Successfully to $MillName!", "Rice Mill Dashboard", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
 } catch {
-    [System.Windows.Forms.MessageBox]::Show("Sync Failed: " + $_.Exception.Message, "Rice Mill Sync Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    $ErrMsg = $_.Exception.Message
+    if ($_.Exception.Response) {
+        try {
+            $Reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+            $ErrMsg = $Reader.ReadToEnd()
+        } catch {}
+    }
+    [System.Windows.Forms.MessageBox]::Show("Sync Failed: " + $ErrMsg, "Rice Mill Sync Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
 }
+
 

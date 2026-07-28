@@ -1736,8 +1736,8 @@ def api_super_admin_download_uploader(license_key):
 CLOUD_URL=https://ricemilldashboard.up.railway.app
 LICENSE_KEY={license_key}
 COMPANY_CODE={company_code}
-ENCRYPTION_KEY=RiceMillDashboardDefaultEncryptionKey2026!
 """
+
 
     search_dirs = [os.path.dirname(EXE_DIR), EXE_DIR, os.getcwd(), os.path.dirname(os.path.abspath(__file__))]
 
@@ -1804,11 +1804,20 @@ def api_sync_database():
     global MDB_PATH
 
     
+    tenant_key = request.headers.get('X-License-Key', '').strip()
+    company_code = request.headers.get('X-Company-Code', '').strip()
     sync_token = request.headers.get('X-Sync-Token', '').strip()
+
+    tenant = (tenants.get_tenant_by_key(tenant_key) if tenant_key else None) or \
+             (tenants.get_tenant_by_code(company_code) if company_code else None)
+
+    if not tenant and 'user' in session and isinstance(session['user'], dict):
+        tenant = tenants.get_tenant_by_id(session['user'].get('tenant_id'))
+
     expected_token = os.environ.get('SYNC_SECRET_TOKEN', 'RiceMillSyncSecretToken2026!').strip()
-    
-    if not sync_token or sync_token != expected_token:
-        return jsonify({'status': 'error', 'message': 'Unauthorized sync token'}), 401
+    if not tenant and (not sync_token or sync_token != expected_token):
+        return jsonify({'status': 'error', 'message': 'Invalid license key or unauthorized sync request'}), 401
+
         
     try:
         import base64
