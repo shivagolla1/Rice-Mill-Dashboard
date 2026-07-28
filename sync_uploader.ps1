@@ -1,5 +1,6 @@
-# Rice Mill Dashboard — Native 2-Click Cloud Sync Uploader (Zero-Python Required)
+# Rice Mill Dashboard - Native 2-Click Cloud Sync Uploader (Zero-Python Required)
 Add-Type -AssemblyName System.Windows.Forms
+
 Add-Type -AssemblyName System.IO.Compression
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -82,8 +83,9 @@ try {
         if ($JsonResp.company_name) { $MillName = $JsonResp.company_name }
     } catch {}
 
-    [System.Windows.Forms.MessageBox]::Show("✓ Database File '$FileName' Synced Successfully to $MillName!", "Rice Mill Dashboard", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    [System.Windows.Forms.MessageBox]::Show("Database File '$FileName' Synced Successfully to $MillName!", "Rice Mill Dashboard", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
 } catch {
-    [System.Windows.Forms.MessageBox]::Show("❌ Sync Failed: " + $_.Exception.Message, "Rice Mill Sync Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    [System.Windows.Forms.MessageBox]::Show("Sync Failed: " + $_.Exception.Message, "Rice Mill Sync Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
 }
+
