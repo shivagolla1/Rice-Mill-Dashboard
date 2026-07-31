@@ -1,0 +1,16 @@
+{
+  "short_name": "Rice Mill",
+  "name": "Rice Mill SaaS Dashboard",
+  "icons": [
+    {
+      "src": "/logo",
+      "type": "image/png",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait"
+}

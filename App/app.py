@@ -1408,6 +1408,12 @@ def api_upload_logo():
     f.save(dest_p)
     return jsonify({'status': 'ok', 'message': 'Mill logo updated successfully!'})
 
+@app.route('/manifest.json')
+def serve_manifest():
+    static_dir = os.path.join(EXE_DIR, 'static')
+    return send_from_directory(static_dir, 'manifest.json', mimetype='application/json')
+
+
 
 @app.route('/api/shutdown', methods=['POST'])
 def api_shutdown():
@@ -1987,7 +1993,8 @@ def api_sync_database():
 @app.before_request
 def restrict_unlicensed():
     # Always allow static files, setup, license, login, SaaS endpoints, and sync endpoints
-    allowed_paths = ('/static/', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/api/sync-database', '/super-admin', '/api/super-admin', '/api/forgot-password', '/api/upload-database', '/api/delete-database')
+    allowed_paths = ('/static/', '/manifest.json', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/api/sync-database', '/super-admin', '/api/super-admin', '/api/forgot-password', '/api/upload-database', '/api/delete-database')
+
 
     if any(request.path.startswith(p) for p in allowed_paths) or request.path in allowed_paths:
         return
