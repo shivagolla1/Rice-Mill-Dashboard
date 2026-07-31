@@ -37,7 +37,8 @@ if sys.stdout is None or not hasattr(sys.stdout, 'write'):
 if sys.stderr is None or not hasattr(sys.stderr, 'write'):
     sys.stderr = DummyWriter()
 
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session, g
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, g, send_from_directory, Response
+
 
 import os, csv, re, io, json, subprocess, time, threading, shutil, gzip
 from datetime import datetime, date as dobj
@@ -1353,6 +1354,60 @@ def api_setup():
         return jsonify({'status': 'ok'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# ── MULTI-TENANT LOGO ENDPOINTS ───────────────────────────────────────────────
+@app.route('/logo')
+@app.route('/logo/<tenant_id>')
+def get_tenant_logo(tenant_id=None):
+    if not tenant_id:
+        user = session.get('user', {})
+        if isinstance(user, dict) and user.get('tenant_id'):
+            tenant_id = user.get('tenant_id')
+        elif session.get('tenant_id'):
+            tenant_id = session.get('tenant_id')
+        else:
+            tenant_id = 'client_sgri'
+
+    tenant_dir = tenants.get_tenant_dir(tenant_id)
+
+    for ext in ['.png', '.jpg', '.jpeg', '.webp', '.gif']:
+        p = os.path.join(tenant_dir, f'logo{ext}')
+        if os.path.exists(p):
+            return send_from_directory(tenant_dir, f'logo{ext}')
+
+    static_dir = os.path.join(EXE_DIR, 'static')
+    if os.path.exists(os.path.join(static_dir, 'logo.jpg')):
+        return send_from_directory(static_dir, 'logo.jpg')
+    return send_from_directory(static_dir, 'logo.png')
+
+@app.route('/api/upload-logo', methods=['POST'])
+def api_upload_logo():
+    if 'user' not in session or not isinstance(session['user'], dict):
+        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+
+    tenant_id = session['user'].get('tenant_id', 'client_sgri')
+    if 'logo' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No logo file provided'}), 400
+
+    f = request.files['logo']
+    if not f or not f.filename:
+        return jsonify({'status': 'error', 'message': 'Empty file'}), 400
+
+    tenant_dir = tenants.get_tenant_dir(tenant_id)
+    ext = os.path.splitext(f.filename)[1].lower() or '.png'
+
+    for old_ext in ['.png', '.jpg', '.jpeg', '.webp', '.gif']:
+        old_p = os.path.join(tenant_dir, f'logo{old_ext}')
+        if os.path.exists(old_p):
+            try:
+                os.remove(old_p)
+            except Exception:
+                pass
+
+    dest_p = os.path.join(tenant_dir, f'logo{ext}')
+    f.save(dest_p)
+    return jsonify({'status': 'ok', 'message': 'Mill logo updated successfully!'})
+
 
 @app.route('/api/shutdown', methods=['POST'])
 def api_shutdown():
