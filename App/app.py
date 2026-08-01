@@ -2018,6 +2018,59 @@ def api_audit_trail():
         'count': len(audit_logs)
     })
 
+# ── MILL STAFF MANAGEMENT ENDPOINTS (ADMIN ONLY) ─────────────────────────────
+@app.route('/api/mill-staff', methods=['GET'])
+@auth.login_required(role='admin')
+def api_mill_staff_list():
+    user = session.get('user', {})
+    tenant_id = user.get('tenant_id', 'client_default') if isinstance(user, dict) else session.get('tenant_id', 'client_default')
+    staff_users = auth.list_tenant_staff(tenant_id)
+    return jsonify({'status': 'ok', 'users': staff_users})
+
+@app.route('/api/mill-staff/add', methods=['POST'])
+@auth.login_required(role='admin')
+def api_mill_staff_add():
+    user = session.get('user', {})
+    tenant_id = user.get('tenant_id', 'client_default') if isinstance(user, dict) else session.get('tenant_id', 'client_default')
+    data = request.get_json() or {}
+
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    name = data.get('name', '').strip()
+
+    success, msg = auth.add_staff_user(tenant_id, username, password, name)
+    if success:
+        return jsonify({'status': 'ok', 'message': msg})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
+@app.route('/api/mill-staff/delete', methods=['POST'])
+@auth.login_required(role='admin')
+def api_mill_staff_delete():
+    user = session.get('user', {})
+    tenant_id = user.get('tenant_id', 'client_default') if isinstance(user, dict) else session.get('tenant_id', 'client_default')
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+
+    success, msg = auth.delete_staff_user(tenant_id, username)
+    if success:
+        return jsonify({'status': 'ok', 'message': msg})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
+@app.route('/api/mill-staff/reset-password', methods=['POST'])
+@auth.login_required(role='admin')
+def api_mill_staff_reset_password():
+    user = session.get('user', {})
+    tenant_id = user.get('tenant_id', 'client_default') if isinstance(user, dict) else session.get('tenant_id', 'client_default')
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    new_password = data.get('new_password', '').strip()
+
+    success, msg = auth.reset_staff_password(tenant_id, username, new_password)
+    if success:
+        return jsonify({'status': 'ok', 'message': msg})
+    return jsonify({'status': 'error', 'message': msg}), 400
+
+
 
 
 @app.before_request

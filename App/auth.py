@@ -36,11 +36,9 @@ def verify_password(password: str, hashed_str: str) -> bool:
     except Exception:
         return False
 
-def init_tenant_users(tenant_id="client_default", admin_pass=None, staff_pass=None):
+def init_tenant_users(tenant_id="client_default", admin_pass=None):
     if not admin_pass:
         admin_pass = os.environ.get('ADMIN_PASSWORD', 'admin2486').strip()
-    if not staff_pass:
-        staff_pass = os.environ.get('STAFF_PASSWORD', 'staff123').strip()
 
     users = {
         'admin': {
@@ -48,12 +46,6 @@ def init_tenant_users(tenant_id="client_default", admin_pass=None, staff_pass=No
             'password_hash': hash_password(admin_pass),
             'role': 'admin',
             'name': 'Administrator'
-        },
-        'staff': {
-            'username': 'staff',
-            'password_hash': hash_password(staff_pass),
-            'role': 'staff',
-            'name': 'Mill Staff'
         }
     }
     save_tenant_users(tenant_id, users)
@@ -209,4 +201,65 @@ def login_required(role=None):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+
+def add_staff_user(tenant_id, username, password, name=None):
+    if not username or not password:
+        return False, "Username and password are required."
+    username_clean = username.strip().lower()
+    if username_clean == 'admin':
+        return False, "Cannot overwrite primary admin account."
+
+    users = load_tenant_users(tenant_id)
+    if username_clean in users:
+        return False, f"Username '{username_clean}' already exists."
+
+    users[username_clean] = {
+        'username': username_clean,
+        'password_hash': hash_password(password),
+        'role': 'staff',
+        'name': name.strip() if name else username_clean.capitalize()
+    }
+    save_tenant_users(tenant_id, users)
+    return True, f"Staff account '{username_clean}' created successfully."
+
+def delete_staff_user(tenant_id, username):
+    if not username:
+        return False, "Username is required."
+    username_clean = username.strip().lower()
+    if username_clean == 'admin':
+        return False, "Cannot delete primary admin account."
+
+    users = load_tenant_users(tenant_id)
+    if username_clean not in users:
+        return False, f"Staff account '{username_clean}' not found."
+
+    del users[username_clean]
+    save_tenant_users(tenant_id, users)
+    return True, f"Staff account '{username_clean}' deleted successfully."
+
+def reset_staff_password(tenant_id, username, new_password):
+    if not username or not new_password:
+        return False, "Username and new password are required."
+    username_clean = username.strip().lower()
+
+    users = load_tenant_users(tenant_id)
+    if username_clean not in users:
+        return False, f"User account '{username_clean}' not found."
+
+    users[username_clean]['password_hash'] = hash_password(new_password)
+    save_tenant_users(tenant_id, users)
+    return True, f"Password for '{username_clean}' updated successfully."
+
+def list_tenant_staff(tenant_id):
+    users = load_tenant_users(tenant_id)
+    result = []
+    for u_key, u_data in users.items():
+        result.append({
+            'username': u_data.get('username', u_key),
+            'name': u_data.get('name', u_key.capitalize()),
+            'role': u_data.get('role', 'staff')
+        })
+    return result
+
 

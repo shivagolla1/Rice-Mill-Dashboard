@@ -2407,11 +2407,19 @@
         </div>
       </div>
     </div>
-    <div class="nav-item" id="btn-mill-logo" onclick="openMillLogoModal()"
-      style="margin-bottom:6px; padding:8px 12px; color:var(--txt-muted); cursor:pointer;">
-      <span class="nav-icon">📷</span>
-      <span class="nav-txt">Change Mill Logo</span>
-    </div>
+      {% if user and (user.role == 'admin' or session.get('is_super_admin')) %}
+      <div class="nav-item" id="btn-manage-staff" onclick="openMillStaffModal()"
+        style="margin-bottom:6px; padding:8px 12px; color:var(--txt-muted); cursor:pointer;">
+        <span class="nav-icon">👥</span>
+        <span class="nav-txt">Manage Staff Accounts</span>
+      </div>
+      {% endif %}
+      <div class="nav-item" id="btn-mill-logo" onclick="openMillLogoModal()"
+        style="margin-bottom:6px; padding:8px 12px; color:var(--txt-muted); cursor:pointer;">
+        <span class="nav-icon">📷</span>
+        <span class="nav-txt">Change Mill Logo</span>
+      </div>
+
     <a href="/logout" class="nav-item" id="btn-close-db"
       style="margin-bottom:0; padding:8px 12px; color:#f87171; text-decoration:none;">
       <span class="nav-icon">🚪</span>
@@ -4624,7 +4632,52 @@
     }
   </script>
 
+  <!-- Mill Staff Management Modal -->
+  <div id="millStaffModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.8); backdrop-filter:blur(6px); z-index:9999; justify-content:center; align-items:center; padding:20px;">
+    <div style="background:var(--sur); border:1px solid var(--bdr); border-radius:14px; width:100%; max-width:540px; padding:28px; box-shadow:0 20px 40px rgba(0,0,0,0.4); position:relative; max-height:90vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid var(--bdr);">
+        <h3 style="font-size:17px; font-weight:700; color:var(--tx); margin:0;">👥 Manage Mill Staff Accounts</h3>
+        <button type="button" onclick="closeMillStaffModal()" style="background:none; border:none; color:var(--tx2); font-size:20px; cursor:pointer; padding:0;">✕</button>
+      </div>
+
+      <div id="staffStatusMsg" style="display:none; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;"></div>
+
+      <!-- Staff List -->
+      <div style="margin-bottom:24px;">
+        <h4 style="font-size:12px; font-weight:600; color:var(--tx2); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;">Active Mill Accounts</h4>
+        <div id="staff-list-container" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="text-align:center; padding:20px; color:var(--tx2); font-size:13px;">Loading accounts…</div>
+        </div>
+      </div>
+
+      <!-- Add New Staff Form -->
+      <div style="background:var(--bg); border:1px solid var(--bdr); border-radius:10px; padding:16px;">
+        <h4 style="font-size:13px; font-weight:700; color:var(--tx); margin-bottom:12px;">➕ Add New Staff Account</h4>
+        <form onsubmit="submitAddStaff(event)">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+            <div style="flex:1; min-width:140px;">
+              <label style="display:block; font-size:11px; font-weight:600; color:var(--tx2); margin-bottom:4px;">Username</label>
+              <input type="text" id="newStaffUsername" placeholder="e.g. operator1" required style="width:100%; padding:8px 10px; background:var(--sur); border:1px solid var(--bdr); border-radius:6px; color:var(--tx); font-size:13px;" />
+            </div>
+            <div style="flex:1; min-width:140px;">
+              <label style="display:block; font-size:11px; font-weight:600; color:var(--tx2); margin-bottom:4px;">Full Name</label>
+              <input type="text" id="newStaffName" placeholder="e.g. Ramesh Kumar" required style="width:100%; padding:8px 10px; background:var(--sur); border:1px solid var(--bdr); border-radius:6px; color:var(--tx); font-size:13px;" />
+            </div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-size:11px; font-weight:600; color:var(--tx2); margin-bottom:4px;">Password</label>
+            <input type="password" id="newStaffPassword" placeholder="••••••••" required style="width:100%; padding:8px 10px; background:var(--sur); border:1px solid var(--bdr); border-radius:6px; color:var(--tx); font-size:13px;" />
+          </div>
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="submit" id="btnSubmitAddStaff" style="padding:8px 18px; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;">Create Staff Account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Mill Logo Upload Modal -->
+
   <div id="millLogoModal" class="modal-overlay"
     style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.8); backdrop-filter:blur(6px); z-index:9999; justify-content:center; align-items:center;">
     <div
@@ -4847,7 +4900,143 @@
       container.innerHTML = html;
     }
 
+    /* ═══════════════════════════════════════════════════════════ MILL STAFF MANAGEMENT */
+    function openMillStaffModal() {
+      document.getElementById('millStaffModal').style.display = 'flex';
+      loadMillStaffList();
+    }
+    function closeMillStaffModal() {
+      document.getElementById('millStaffModal').style.display = 'none';
+    }
+
+    async function loadMillStaffList() {
+      const container = document.getElementById('staff-list-container');
+      if (!container) return;
+
+      try {
+        const resp = await fetch('/api/mill-staff');
+        const res = await resp.json();
+        if (resp.ok && res.status === 'ok') {
+          const users = res.users || [];
+          if (users.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:16px; color:var(--tx2); font-size:12.5px;">No staff accounts found. Add one below.</div>`;
+            return;
+          }
+          let html = '';
+          users.forEach(u => {
+            const isAdmin = u.role === 'admin';
+            const roleBadgeBg = isAdmin ? 'rgba(201,100,66,0.15)' : 'rgba(56,189,248,0.15)';
+            const roleBadgeColor = isAdmin ? 'var(--accent)' : '#38bdf8';
+            const roleText = isAdmin ? '🛡️ Mill Admin' : '👤 Mill Staff';
+
+            html += `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); border:1px solid var(--bdr); border-radius:8px; padding:10px 14px;">
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight:700; color:var(--tx); font-size:13.5px;">${u.name}</span>
+                    <span style="font-size:11px; padding:2px 6px; border-radius:4px; font-weight:600; background:${roleBadgeBg}; color:${roleBadgeColor};">${roleText}</span>
+                  </div>
+                  <div style="font-size:11.5px; color:var(--tx2); font-family:monospace; margin-top:2px;">Username: ${u.username}</div>
+                </div>
+                <div>
+                  ${!isAdmin ? `
+                    <button onclick="promptResetStaffPassword('${u.username}')" style="background:none; border:1px solid var(--bdr); color:var(--tx2); padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer; margin-right:4px;">🔑 Reset</button>
+                    <button onclick="deleteStaffUser('${u.username}')" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#ef4444; padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer;">🗑️ Delete</button>
+                  ` : `<span style="font-size:11px; color:var(--tx3); font-style:italic;">Primary Owner</span>`}
+                </div>
+              </div>
+            `;
+          });
+          container.innerHTML = html;
+        }
+      } catch (err) {
+        container.innerHTML = `<div style="text-align:center; padding:16px; color:#ef4444; font-size:12.5px;">Error loading staff list.</div>`;
+      }
+    }
+
+    async function submitAddStaff(event) {
+      event.preventDefault();
+      const username = document.getElementById('newStaffUsername').value.trim();
+      const name = document.getElementById('newStaffName').value.trim();
+      const password = document.getElementById('newStaffPassword').value.trim();
+      const msgBox = document.getElementById('staffStatusMsg');
+      const btn = document.getElementById('btnSubmitAddStaff');
+
+      if (!username || !password) return;
+
+      msgBox.style.display = 'block';
+      msgBox.style.background = 'rgba(201,100,66,0.15)';
+      msgBox.style.color = 'var(--accent)';
+      msgBox.innerText = 'Creating staff account…';
+      btn.disabled = true;
+
+      try {
+        const resp = await fetch('/api/mill-staff/add', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ username, name, password })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.status === 'ok') {
+          msgBox.style.background = 'rgba(34,197,94,0.15)';
+          msgBox.style.color = '#22c55e';
+          msgBox.innerText = '✓ ' + res.message;
+          document.getElementById('newStaffUsername').value = '';
+          document.getElementById('newStaffName').value = '';
+          document.getElementById('newStaffPassword').value = '';
+          loadMillStaffList();
+        } else {
+          msgBox.style.background = 'rgba(239,68,68,0.15)';
+          msgBox.style.color = '#ef4444';
+          msgBox.innerText = res.message || 'Failed to create staff account.';
+        }
+      } catch (err) {
+        msgBox.style.display = 'block';
+        msgBox.style.background = 'rgba(239,68,68,0.15)';
+        msgBox.style.color = '#ef4444';
+        msgBox.innerText = 'Network error.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteStaffUser(username) {
+      if (!confirm(`Are you sure you want to delete staff account '${username}'?`)) return;
+      try {
+        const resp = await fetch('/api/mill-staff/delete', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ username })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.status === 'ok') {
+          loadMillStaffList();
+        } else {
+          alert(res.message || 'Delete failed');
+        }
+      } catch (err) {
+        alert('Network error deleting staff account');
+      }
+    }
+
+    async function promptResetStaffPassword(username) {
+      const newPass = prompt(`Enter new password for staff user '${username}':`);
+      if (!newPass) return;
+      try {
+        const resp = await fetch('/api/mill-staff/reset-password', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ username, new_password: newPass })
+        });
+        const res = await resp.json();
+        alert(res.message || 'Password updated');
+      } catch (err) {
+        alert('Network error resetting password');
+      }
+    }
+
   </script>
 </body>
+
 
 </html>
