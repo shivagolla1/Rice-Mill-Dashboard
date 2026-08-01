@@ -2414,11 +2414,14 @@
         <span class="nav-txt">Manage Staff Accounts</span>
       </div>
       {% endif %}
+      {% if user and (user.role == 'admin' or session.get('is_super_admin')) %}
       <div class="nav-item" id="btn-mill-logo" onclick="openMillLogoModal()"
         style="margin-bottom:6px; padding:8px 12px; color:var(--txt-muted); cursor:pointer;">
         <span class="nav-icon">📷</span>
         <span class="nav-txt">Change Mill Logo</span>
       </div>
+      {% endif %}
+
 
     <a href="/logout" class="nav-item" id="btn-close-db"
       style="margin-bottom:0; padding:8px 12px; color:#f87171; text-decoration:none;">
@@ -4776,10 +4779,13 @@
       <span>Stocks</span>
     </div>
     {% endif %}
+    {% if user and (user.role == 'admin' or session.get('is_super_admin')) %}
     <div class="mobile-nav-item" onclick="openMillLogoModal()">
       <span class="mobile-nav-icon">📷</span>
       <span>Logo</span>
     </div>
+    {% endif %}
+
     <div class="mobile-nav-item" onclick="openWebUploadModal()">
       <span class="mobile-nav-icon">📁</span>
       <span>Upload</span>

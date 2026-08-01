@@ -1388,11 +1388,11 @@ def get_tenant_logo(tenant_id=None):
     return send_from_directory(static_dir, 'logo.png')
 
 @app.route('/api/upload-logo', methods=['POST'])
+@auth.login_required(role='admin')
 def api_upload_logo():
-    if 'user' not in session or not isinstance(session['user'], dict):
-        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+    user = session.get('user', {})
+    tenant_id = user.get('tenant_id', 'client_default') if isinstance(user, dict) else session.get('tenant_id', 'client_default')
 
-    tenant_id = session['user'].get('tenant_id', 'client_default')
     if 'logo' not in request.files:
         return jsonify({'status': 'error', 'message': 'No logo file provided'}), 400
 
