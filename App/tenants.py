@@ -51,16 +51,16 @@ def generate_key(prefix="RM", length=4):
     return f"{prefix}-{part1}-{part2}"
 
 def init_default_tenants():
-    # Migration helper: ensure primary single-tenant client (SGRI) is registered
+    # Migration helper: ensure primary single-tenant client is registered
     primary_key = os.environ.get('SYNC_SECRET_TOKEN', 'RiceMillSyncSecretToken2026!').strip()
     primary_enc = os.environ.get('ENCRYPTION_KEY', 'RiceMillDashboardDefaultEncryptionKey2026!').strip()
 
     tenants = {
-        "RM-SGRI-2026": {
-            "tenant_id": "client_sgri",
-            "company_name": "Sri Ganesh Rice Mill",
-            "company_code": "SGRI",
-            "license_key": "RM-SGRI-2026",
+        "RM-DEMO-2026": {
+            "tenant_id": "client_default",
+            "company_name": "Demo Rice Mill",
+            "company_code": "DEMO",
+            "license_key": "RM-DEMO-2026",
             "secret_token": primary_key,
             "encryption_key": primary_enc,
             "status": "ACTIVE",
@@ -70,6 +70,7 @@ def init_default_tenants():
             "show_bi_reports": False
         }
     }
+
     save_tenants(tenants)
     return tenants
 

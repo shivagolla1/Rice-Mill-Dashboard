@@ -319,10 +319,10 @@ def get_current_tenant_id():
     if hasattr(g, 'tenant_id') and g.tenant_id:
         return g.tenant_id
     if 'user' in session and isinstance(session['user'], dict):
-        return session['user'].get('tenant_id', 'client_sgri')
+        return session['user'].get('tenant_id', 'client_default')
     if 'tenant_id' in session and session['tenant_id']:
         return session['tenant_id']
-    return 'client_sgri'
+    return 'client_default'
 
 def get_current_tenant_mdb_path():
     """Return absolute path to the active tenant's Database.mdb file."""
@@ -331,8 +331,8 @@ def get_current_tenant_mdb_path():
     tenant_mdb = os.path.join(tenant_dir, 'Database.mdb')
     if os.path.exists(tenant_mdb):
         return tenant_mdb
-    # Fallback to single-tenant MDB_PATH ONLY for primary tenant client_sgri
-    if tenant_id == 'client_sgri' and 'MDB_PATH' in globals() and MDB_PATH and os.path.exists(MDB_PATH):
+    # Fallback to single-tenant MDB_PATH ONLY for primary tenant client_default
+    if tenant_id == 'client_default' and 'MDB_PATH' in globals() and MDB_PATH and os.path.exists(MDB_PATH):
         return MDB_PATH
     return tenant_mdb
 
@@ -1373,7 +1373,7 @@ def get_tenant_logo(tenant_id=None):
         elif session.get('tenant_id'):
             tenant_id = session.get('tenant_id')
         else:
-            tenant_id = 'client_sgri'
+            tenant_id = 'client_default'
 
     tenant_dir = tenants.get_tenant_dir(tenant_id)
 
@@ -1392,7 +1392,7 @@ def api_upload_logo():
     if 'user' not in session or not isinstance(session['user'], dict):
         return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
 
-    tenant_id = session['user'].get('tenant_id', 'client_sgri')
+    tenant_id = session['user'].get('tenant_id', 'client_default')
     if 'logo' not in request.files:
         return jsonify({'status': 'error', 'message': 'No logo file provided'}), 400
 
@@ -1570,7 +1570,7 @@ def login_page():
         expired_msg = "⚠️ Your session has expired due to inactivity. Please sign in again." if request.args.get('expired') == '1' else None
         return render_template('login.html', error=expired_msg)
 
-    company_code = request.form.get('company_code', 'SGRI').strip()
+    company_code = request.form.get('company_code', 'DEMO').strip()
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '').strip()
 
@@ -1579,8 +1579,8 @@ def login_page():
         session.permanent = True
         session['user'] = user
         session['role'] = user.get('role', 'staff')
-        session['tenant_id'] = user.get('tenant_id', 'client_sgri')
-        session['company_code'] = user.get('company_code', 'SGRI')
+        session['tenant_id'] = user.get('tenant_id', 'client_default')
+        session['company_code'] = user.get('company_code', 'DEMO')
         session['company_name'] = user.get('company_name', 'Rice Mill')
         session['last_active'] = int(time.time())
         next_url = request.args.get('next') or url_for('index')
@@ -1619,7 +1619,7 @@ def api_change_password():
     old_password = data.get('old_password', '').strip()
     new_password = data.get('new_password', '').strip()
 
-    tenant_id = session['user'].get('tenant_id', 'client_sgri')
+    tenant_id = session['user'].get('tenant_id', 'client_default')
     username = session['user'].get('username')
 
     success, msg = auth.change_user_password(tenant_id, username, old_password, new_password)
@@ -1633,7 +1633,7 @@ def api_upload_database():
     if 'user' not in session or not isinstance(session['user'], dict):
         return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
 
-    tenant_id = session['user'].get('tenant_id', 'client_sgri')
+    tenant_id = session['user'].get('tenant_id', 'client_default')
     if 'file' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
 
@@ -1681,7 +1681,7 @@ def api_delete_database():
     if 'user' not in session or not isinstance(session['user'], dict):
         return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
         
-    tenant_id = session['user'].get('tenant_id', 'client_sgri')
+    tenant_id = session['user'].get('tenant_id', 'client_default')
     tenant_dir = tenants.get_tenant_dir(tenant_id)
     target_mdb = os.path.join(tenant_dir, 'Database.mdb')
 
@@ -1969,7 +1969,7 @@ def api_sync_database():
         if not tenant and 'user' in session and isinstance(session['user'], dict):
             tenant = tenants.get_tenant_by_id(session['user'].get('tenant_id'))
 
-        tenant_id = tenant.get('tenant_id', 'client_sgri') if tenant else 'client_sgri'
+        tenant_id = tenant.get('tenant_id', 'client_default') if tenant else 'client_default'
         company_name = tenant.get('company_name', 'Rice Mill') if tenant else 'Rice Mill'
         
         tenant_dir = tenants.get_tenant_dir(tenant_id)
@@ -1978,7 +1978,7 @@ def api_sync_database():
         with open(target_mdb, 'wb') as f:
             f.write(mdb_bytes)
 
-        if tenant_id == 'client_sgri':
+        if tenant_id == 'client_default':
             MDB_PATH = target_mdb
 
         with _tenant_cache_lock:
@@ -2009,7 +2009,7 @@ def api_sync_database():
 @auth.login_required(role='admin')
 def api_audit_trail():
     user = session.get('user', {})
-    tenant_id = user.get('tenant_id', 'client_sgri') if isinstance(user, dict) else session.get('tenant_id', 'client_sgri')
+    tenant_id = user.get('tenant_id', 'client_default') if isinstance(user, dict) else session.get('tenant_id', 'client_default')
 
     audit_logs = audit_engine.AuditEngine.get_audit_log(tenant_id)
     return jsonify({
@@ -2103,8 +2103,8 @@ def index():
         return redirect(url_for('setup'))
 
     user = session.get('user', {})
-    tenant_id = user.get('tenant_id', 'client_sgri') if isinstance(user, dict) else session.get('tenant_id', 'client_sgri')
-    tenant = tenants.get_tenant_by_id(tenant_id) or tenants.get_tenant_by_code(session.get('company_code', 'SGRI'))
+    tenant_id = user.get('tenant_id', 'client_default') if isinstance(user, dict) else session.get('tenant_id', 'client_default')
+    tenant = tenants.get_tenant_by_id(tenant_id) or tenants.get_tenant_by_code(session.get('company_code', 'DEMO'))
 
     name = (tenant.get('company_name') if tenant and tenant.get('company_name') else None) or session.get('company_name') or CFG.get('INDUSTRY_NAME', 'Rice Mill')
     show_stocks = tenant.get('show_stocks', False) if tenant else SHOW_STOCKS

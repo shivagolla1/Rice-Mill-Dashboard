@@ -1,5 +1,5 @@
 ╔══════════════════════════════════════════════════════════════╗
-║         SGRI RICE MILL DASHBOARD — Setup Guide               ║
+║           RICE MILL DASHBOARD — Setup Guide               ║
 ╚══════════════════════════════════════════════════════════════╝
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -14,7 +14,7 @@
    → Installs flask, openpyxl, access_parser
 
 3. Make sure your .mdb file is at:
-      data\SGRI_2025-2026.mdb
+      data\ _2025-2026.mdb
 
 4. Double-click start.bat
    → Browser opens automatically at http://localhost:5000
@@ -43,7 +43,7 @@ Explore → IO Explorer: filter bills, click to see
   FOLDER STRUCTURE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  sgri-dashboard/
+   -dashboard/
     app.py               ← main server
     config.txt           ← your settings
     setup.bat            ← run once
@@ -51,7 +51,7 @@ Explore → IO Explorer: filter bills, click to see
     requirements.txt
     SETUP_GUIDE.txt      ← this file
     data/
-      SGRI_2025-2026.mdb ← your database
+       _2025-2026.mdb ← your database
     templates/
       index.html         ← dashboard UI
 
@@ -89,7 +89,7 @@ To view stock levels from your phone while away from mill:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Orders page is empty / shows error
-  → Check that data\SGRI_2025-2026.mdb exists
+  → Check that data\ _2025-2026.mdb exists
   → Run setup.bat again if access_parser is missing
 
 "python is not recognized"

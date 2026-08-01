@@ -14,7 +14,7 @@ def get_current_user():
         return session['user']
     return None
 
-def get_tenant_users_path(tenant_id="client_sgri"):
+def get_tenant_users_path(tenant_id="client_default"):
 
     from tenants import get_tenant_dir
     tenant_dir = get_tenant_dir(tenant_id)
@@ -36,7 +36,7 @@ def verify_password(password: str, hashed_str: str) -> bool:
     except Exception:
         return False
 
-def init_tenant_users(tenant_id="client_sgri", admin_pass=None, staff_pass=None):
+def init_tenant_users(tenant_id="client_default", admin_pass=None, staff_pass=None):
     if not admin_pass:
         admin_pass = os.environ.get('ADMIN_PASSWORD', 'admin2486').strip()
     if not staff_pass:
@@ -59,7 +59,7 @@ def init_tenant_users(tenant_id="client_sgri", admin_pass=None, staff_pass=None)
     save_tenant_users(tenant_id, users)
     return users
 
-def load_tenant_users(tenant_id="client_sgri"):
+def load_tenant_users(tenant_id="client_default"):
     p = get_tenant_users_path(tenant_id)
     if not os.path.exists(p):
         return init_tenant_users(tenant_id)

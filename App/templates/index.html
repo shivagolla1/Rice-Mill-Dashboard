@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <script>window.DASHBOARD_VERSION = "1.0.1";</script>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -2144,9 +2145,11 @@
     .mobile-bottom-nav {
       display: none;
     }
+
     .mobile-card-list {
       display: none;
     }
+
     .btn-mobile-filter {
       display: none;
     }
@@ -2155,13 +2158,16 @@
       nav.sb {
         display: none !important;
       }
+
       .main {
         margin-left: 0 !important;
         padding-bottom: 90px !important;
       }
+
       .ph {
         padding: 14px 16px !important;
       }
+
       .fc-bar {
         display: none !important;
       }
@@ -2201,6 +2207,7 @@
         align-items: center;
         padding-bottom: env(safe-area-inset-bottom);
       }
+
       .mobile-nav-item {
         display: flex;
         flex-direction: column;
@@ -2216,9 +2223,11 @@
         cursor: pointer;
         transition: all 0.15s ease;
       }
+
       .mobile-nav-item.active {
         color: var(--accent);
       }
+
       .mobile-nav-icon {
         font-size: 18px;
         line-height: 1;
@@ -2227,12 +2236,14 @@
       .tw {
         display: none !important;
       }
+
       .mobile-card-list {
         display: flex !important;
         flex-direction: column;
         gap: 12px;
         padding: 12px 14px;
       }
+
       .m-card {
         background: var(--sur);
         border: 1px solid var(--bdr);
@@ -2242,26 +2253,31 @@
         cursor: pointer;
         transition: transform 0.1s ease, border-color 0.1s ease;
       }
+
       .m-card:active {
         transform: scale(0.98);
         border-color: var(--accent);
       }
+
       .m-card-hdr {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 8px;
       }
+
       .m-card-no {
         font-size: 12px;
         font-weight: 700;
         color: var(--accent);
         font-family: monospace;
       }
+
       .m-card-date {
         font-size: 11px;
         color: var(--tx2);
       }
+
       .m-card-party {
         font-size: 15px;
         font-weight: 700;
@@ -2269,11 +2285,13 @@
         margin-bottom: 4px;
         line-height: 1.3;
       }
+
       .m-card-broker {
         font-size: 12px;
         color: var(--tx2);
         margin-bottom: 10px;
       }
+
       .m-card-ftr {
         display: flex;
         justify-content: space-between;
@@ -2281,11 +2299,13 @@
         padding-top: 10px;
         border-top: 1px dashed var(--bdr2);
       }
+
       .m-card-qty {
         font-size: 12px;
         color: var(--tx2);
         font-weight: 500;
       }
+
       .m-card-amt {
         font-size: 15px;
         font-weight: 700;
@@ -2306,7 +2326,8 @@
       <div style="font-size:48px; margin-bottom:16px;">💾</div>
       <h2 style="font-size:22px; font-weight:700; margin-bottom:10px; color:var(--tx);">No Database File Selected</h2>
       <p style="font-size:14px; color:var(--tx2); margin-bottom:26px; line-height:1.6;">
-        Please upload or select the Access Database (<code>.mdb</code>) file for <strong>{{ industry_name }}</strong> to view the dashboard.
+        Please upload or select the Access Database (<code>.mdb</code>) file for <strong>{{ industry_name }}</strong> to
+        view the dashboard.
       </p>
       <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
         <button onclick="openWebUploadModal()"
@@ -2314,7 +2335,10 @@
           onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='var(--accent)'">
           📁 Select / Upload Database File
         </button>
-        <a href="/logout" style="background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.3); padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s ease;" onmouseover="this.style.background='rgba(248,113,113,0.22)'" onmouseout="this.style.background='rgba(248,113,113,0.12)'">
+        <a href="/logout"
+          style="background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.3); padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s ease;"
+          onmouseover="this.style.background='rgba(248,113,113,0.22)'"
+          onmouseout="this.style.background='rgba(248,113,113,0.12)'">
           🚪 Logout
         </a>
       </div>
@@ -2370,12 +2394,12 @@
       {% if user and (user.role == 'admin' or session.get('is_super_admin')) %}
       <div class="nav-item" data-page="audit" onclick="loadAuditTrail()">
         <span class="nav-icon">🛡️</span>
-        <span class="nav-txt"> Fraud Audit Trail</span>
+        <span class="nav-txt"> Audit Trail</span>
       </div>
       {% endif %}
 
 
-         <div class="sb-db" style="padding:6px; border-top:1px solid var(--bdr); min-width:var(--sw)">
+      <div class="sb-db" style="padding:6px; border-top:1px solid var(--bdr); min-width:var(--sw)">
         <div class="nav-item" id="btn-change-db" onclick="openWebUploadModal()"
           style="margin-bottom:6px; padding:8px 12px; background:rgba(201, 100, 66, .15); color:var(--accent-lt);">
           <span class="nav-icon">📁</span>
@@ -2383,43 +2407,52 @@
         </div>
       </div>
     </div>
-        <div class="nav-item" id="btn-mill-logo" onclick="openMillLogoModal()"
-          style="margin-bottom:6px; padding:8px 12px; color:var(--txt-muted); cursor:pointer;">
-          <span class="nav-icon">📷</span>
-          <span class="nav-txt">Change Mill Logo</span>
-        </div>
-        <a href="/logout" class="nav-item" id="btn-close-db"
-          style="margin-bottom:0; padding:8px 12px; color:#f87171; text-decoration:none;">
-          <span class="nav-icon">🚪</span>
-          <span class="nav-txt">Logout</span>
-        </a>
+    <div class="nav-item" id="btn-mill-logo" onclick="openMillLogoModal()"
+      style="margin-bottom:6px; padding:8px 12px; color:var(--txt-muted); cursor:pointer;">
+      <span class="nav-icon">📷</span>
+      <span class="nav-txt">Change Mill Logo</span>
+    </div>
+    <a href="/logout" class="nav-item" id="btn-close-db"
+      style="margin-bottom:0; padding:8px 12px; color:#f87171; text-decoration:none;">
+      <span class="nav-icon">🚪</span>
+      <span class="nav-txt">Logout</span>
+    </a>
 
 
-      </div>
-      <div class="sb-footer">
-        <span class="nav-icon"><svg viewBox="0 0 24 24">
-            <path
-              d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
-          </svg></span>
-        <span class="sb-foot-txt"> Last sync<br><span id="sync-time">—</span></span>
-      </div>
+    </div>
+    <div class="sb-footer">
+      <span class="nav-icon"><svg viewBox="0 0 24 24">
+          <path
+            d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+        </svg></span>
+      <span class="sb-foot-txt"> Last sync<br><span id="sync-time">—</span></span>
+    </div>
     </div>
   </nav>
 
   <div class="main">
 
     <!-- Embedded Welcome Card for No-Database State -->
-    <div id="no-db-welcome-card" style="display:none; margin:30px auto; max-width:620px; background:var(--sur); border:1px solid var(--bdr); border-radius:14px; padding:44px 32px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,0.22);">
+    <div id="no-db-welcome-card"
+      style="display:none; margin:30px auto; max-width:620px; background:var(--sur); border:1px solid var(--bdr); border-radius:14px; padding:44px 32px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,0.22);">
       <div style="font-size:48px; margin-bottom:16px;">🌾</div>
-      <h2 style="font-size:22px; font-weight:700; color:var(--tx); margin-bottom:10px;">Welcome to {{ industry_name }}</h2>
-      <p style="font-size:13.5px; color:var(--tx2); margin-bottom:26px; line-height:1.6; max-width:480px; margin-left:auto; margin-right:auto;">
-        To view your live sales, purchases, journal entries, and stock reports, please upload your Access Database (<code>.mdb</code>) file.
+      <h2 style="font-size:22px; font-weight:700; color:var(--tx); margin-bottom:10px;">Welcome to {{ industry_name }}
+      </h2>
+      <p
+        style="font-size:13.5px; color:var(--tx2); margin-bottom:26px; line-height:1.6; max-width:480px; margin-left:auto; margin-right:auto;">
+        To view your live sales, purchases, journal entries, and stock reports, please upload your Access Database
+        (<code>.mdb</code>) file.
       </p>
       <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
-        <button type="button" onclick="openWebUploadModal()" style="background:var(--accent); color:#fff; border:none; padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; cursor:pointer; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(201,100,66,0.3);" onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='var(--accent)'">
+        <button type="button" onclick="openWebUploadModal()"
+          style="background:var(--accent); color:#fff; border:none; padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; cursor:pointer; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(201,100,66,0.3);"
+          onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='var(--accent)'">
           📁 Upload Access Database (.mdb)
         </button>
-        <a href="/logout" style="background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.3); padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s ease;" onmouseover="this.style.background='rgba(248,113,113,0.22)'" onmouseout="this.style.background='rgba(248,113,113,0.12)'">
+        <a href="/logout"
+          style="background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.3); padding:12px 24px; font-size:14px; font-weight:600; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.2s ease;"
+          onmouseover="this.style.background='rgba(248,113,113,0.22)'"
+          onmouseout="this.style.background='rgba(248,113,113,0.12)'">
           🚪 Logout
         </a>
       </div>
@@ -2526,7 +2559,9 @@
         <!-- Totals Row/Button -->
         <div class="totals-bar" id="totals-bar-sales">
           <button id="btn-show-totals-sales" class="btn-totals-trigger" onclick="toggleTotals('sales')">
-            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:6px;"><path d="M19 13H5v-2h14v2z"/></svg>
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:6px;">
+              <path d="M19 13H5v-2h14v2z" />
+            </svg>
             Show Totals
           </button>
           <div id="totals-content-sales" class="totals-content" style="display:none">
@@ -2637,7 +2672,9 @@
         <!-- Totals Row/Button -->
         <div class="totals-bar" id="totals-bar-pur">
           <button id="btn-show-totals-pur" class="btn-totals-trigger" onclick="toggleTotals('pur')">
-            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:6px;"><path d="M19 13H5v-2h14v2z"/></svg>
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:6px;">
+              <path d="M19 13H5v-2h14v2z" />
+            </svg>
             Show Totals
           </button>
           <div id="totals-content-pur" class="totals-content" style="display:none">
@@ -2813,18 +2850,20 @@
           <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
           <div class="pbh-text">
             <div class="pbh-name">{{ industry_name }}</div>
-            <div class="pbh-subtitle">Fraud Audit Trail & Record Alterations</div>
+            <div class="pbh-subtitle"> Audit Trail & Record Alterations</div>
           </div>
         </div>
         <div class="screen-header-title">
-          <div class="pt">🛡️ Fraud Audit Trail & Field Changes</div>
+          <div class="pt">Audit Trail & Field Changes</div>
         </div>
       </div>
       <div class="pc" style="padding:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
           <div>
             <h3 style="font-size:16px; font-weight:700; color:var(--tx); margin:0;">Record Alteration Log</h3>
-            <p style="font-size:12.5px; color:var(--tx2); margin:4px 0 0 0;">Tracks field-level edits, rate reductions, and deleted bills across database uploads</p>
+            <p style="font-size:12.5px; color:var(--tx2); margin:4px 0 0 0;">Tracks field-level edits, rate reductions,
+              and deleted bills across database uploads</p>
           </div>
           <div style="display:flex; gap:8px;">
             <button class="ia-btn active" id="audit-filter-all" onclick="filterAuditLogs('all')">All Events</button>
@@ -2834,7 +2873,8 @@
         </div>
 
         <div id="audit-log-container" style="display:flex; flex-direction:column; gap:16px;">
-          <div style="text-align:center; padding:40px; color:var(--tx2); background:var(--sur); border:1px solid var(--bdr); border-radius:12px;">
+          <div
+            style="text-align:center; padding:40px; color:var(--tx2); background:var(--sur); border:1px solid var(--bdr); border-radius:12px;">
             Loading audit log history…
           </div>
         </div>
@@ -3022,7 +3062,7 @@
       showTotalsState[tab] = !showTotalsState[tab];
       const triggerBtn = document.getElementById(`btn-show-totals-${tab}`);
       const contentDiv = document.getElementById(`totals-content-${tab}`);
-      
+
       if (showTotalsState[tab]) {
         triggerBtn.style.display = 'none';
         contentDiv.style.display = 'flex';
@@ -3710,7 +3750,7 @@
   {% if show_bi_reports %}
   <script>
     /* ═══════════════════════════════════════════════════════════ BI REPORTS */
-     let biData = null;
+    let biData = null;
     let biMode = 'sales'; // 'sales' | 'purchases'
     let biGroup = 'party'; // 'party' | 'broker'
     let biSortCol = 'name';
@@ -4435,33 +4475,50 @@
 
 
   <!-- Web UI Direct FileUpload Modal Window -->
-  <div id="webUploadModal" onclick="if(event.target === this) closeWebUploadModal()" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:var(--sur); border:1px solid var(--bdr); border-radius:16px; padding:28px; max-width:440px; width:100%; box-shadow:0 16px 40px rgba(0,0,0,0.35); position:relative;">
-      
+  <div id="webUploadModal" onclick="if(event.target === this) closeWebUploadModal()"
+    style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div
+      style="background:var(--sur); border:1px solid var(--bdr); border-radius:16px; padding:28px; max-width:440px; width:100%; box-shadow:0 16px 40px rgba(0,0,0,0.35); position:relative;">
+
       <!-- Modal Header with Title & Close Button -->
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--bdr);">
+      <div
+        style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--bdr);">
         <h3 style="font-size:17px; font-weight:700; color:var(--tx); margin:0;">📁 Sync / Upload Database</h3>
-        <button type="button" onclick="closeWebUploadModal()" style="background:transparent; border:none; color:var(--tx3); font-size:20px; font-weight:700; cursor:pointer; line-height:1; padding:2px 6px; border-radius:4px; transition:all 0.15s ease;" onmouseover="this.style.color='var(--tx)'; this.style.background='var(--sur2)'" onmouseout="this.style.color='var(--tx3)'; this.style.background='transparent'" title="Close Window (Esc)">✖</button>
+        <button type="button" onclick="closeWebUploadModal()"
+          style="background:transparent; border:none; color:var(--tx3); font-size:20px; font-weight:700; cursor:pointer; line-height:1; padding:2px 6px; border-radius:4px; transition:all 0.15s ease;"
+          onmouseover="this.style.color='var(--tx)'; this.style.background='var(--sur2)'"
+          onmouseout="this.style.color='var(--tx3)'; this.style.background='transparent'"
+          title="Close Window (Esc)">✖</button>
       </div>
 
-      <p style="font-size:13px; color:var(--tx2); margin-bottom:20px; line-height:1.5;">Select your Access file (<code>.mdb</code>) from your USB drive or computer to update the dashboard.</p>
-      
-      <div id="uploadStatusMsg" style="display:none; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;"></div>
+      <p style="font-size:13px; color:var(--tx2); margin-bottom:20px; line-height:1.5;">Select your Access file
+        (<code>.mdb</code>) from your USB drive or computer to update the dashboard.</p>
 
-      <div style="border:2px dashed var(--bdr2); border-radius:12px; padding:26px; text-align:center; background:var(--bg); margin-bottom:20px; cursor:pointer; transition:all 0.2s ease;" onclick="document.getElementById('webMdbFile').click()" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--bdr2)'">
+      <div id="uploadStatusMsg"
+        style="display:none; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;"></div>
+
+      <div
+        style="border:2px dashed var(--bdr2); border-radius:12px; padding:26px; text-align:center; background:var(--bg); margin-bottom:20px; cursor:pointer; transition:all 0.2s ease;"
+        onclick="document.getElementById('webMdbFile').click()" onmouseover="this.style.borderColor='var(--accent)'"
+        onmouseout="this.style.borderColor='var(--bdr2)'">
         <span style="font-size:36px; display:block; margin-bottom:8px;">📁</span>
         <span style="font-size:13px; font-weight:600; color:var(--accent-lt);">Click or Drag & Drop .mdb File</span>
         <input type="file" id="webMdbFile" accept=".mdb" style="display:none;" onchange="handleMdbFileSelected(this)" />
-        <div id="selectedFileName" style="font-size:12px; color:var(--tx2); margin-top:6px; font-family:var(--mono);">No file selected</div>
+        <div id="selectedFileName" style="font-size:12px; color:var(--tx2); margin-top:6px; font-family:var(--mono);">No
+          file selected</div>
       </div>
 
       <div style="display:flex; gap:10px;">
-        <button type="button" class="btn" style="background:var(--tx3); width:50%;" onclick="closeWebUploadModal()">Cancel</button>
-        <button type="button" class="btn" style="width:50%;" id="btnSubmitUpload" onclick="startDirectWebUpload()" disabled>Upload & Sync</button>
+        <button type="button" class="btn" style="background:var(--tx3); width:50%;"
+          onclick="closeWebUploadModal()">Cancel</button>
+        <button type="button" class="btn" style="width:50%;" id="btnSubmitUpload" onclick="startDirectWebUpload()"
+          disabled>Upload & Sync</button>
       </div>
 
       <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--bdr2); text-align:center;">
-        <button type="button" class="btn" style="background:rgba(168,56,32,0.12); color:var(--red); border:1px solid rgba(168,56,32,0.3); font-size:12px; padding:7px 14px;" onclick="confirmDeleteDatabase()">🗑️ Delete Current File</button>
+        <button type="button" class="btn"
+          style="background:rgba(168,56,32,0.12); color:var(--red); border:1px solid rgba(168,56,32,0.3); font-size:12px; padding:7px 14px;"
+          onclick="confirmDeleteDatabase()">🗑️ Delete Current File</button>
       </div>
     </div>
   </div>
@@ -4481,7 +4538,7 @@
             if (card) card.style.display = 'none';
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
 
     function openWebUploadModal() {
@@ -4497,7 +4554,7 @@
     function handleMdbFileSelected(input) {
       if (input.files && input.files[0]) {
         const file = input.files[0];
-        document.getElementById('selectedFileName').innerText = `${file.name} (${(file.size / (1024*1024)).toFixed(2)} MB)`;
+        document.getElementById('selectedFileName').innerText = `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
         document.getElementById('btnSubmitUpload').disabled = false;
       }
     }
@@ -4568,21 +4625,31 @@
   </script>
 
   <!-- Mill Logo Upload Modal -->
-  <div id="millLogoModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.8); backdrop-filter:blur(6px); z-index:9999; justify-content:center; align-items:center;">
-    <div style="background:var(--sur); border:1px solid var(--bdr); border-radius:14px; width:90%; max-width:440px; padding:28px; box-shadow:0 20px 40px rgba(0,0,0,0.4); position:relative;">
+  <div id="millLogoModal" class="modal-overlay"
+    style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.8); backdrop-filter:blur(6px); z-index:9999; justify-content:center; align-items:center;">
+    <div
+      style="background:var(--sur); border:1px solid var(--bdr); border-radius:14px; width:90%; max-width:440px; padding:28px; box-shadow:0 20px 40px rgba(0,0,0,0.4); position:relative;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
         <h3 style="font-size:17px; font-weight:700; color:var(--tx); margin:0;">📷 Upload Mill Logo</h3>
-        <button type="button" onclick="closeMillLogoModal()" style="background:none; border:none; color:var(--tx2); font-size:20px; cursor:pointer; padding:0;">✕</button>
+        <button type="button" onclick="closeMillLogoModal()"
+          style="background:none; border:none; color:var(--tx2); font-size:20px; cursor:pointer; padding:0;">✕</button>
       </div>
       <form onsubmit="submitMillLogo(event)">
         <div style="margin-bottom:18px;">
-          <label style="display:block; font-size:12px; font-weight:600; color:var(--tx2); margin-bottom:8px;">Select Logo Image (PNG / JPG)</label>
-          <input type="file" id="logoFileInput" accept="image/*" required style="width:100%; padding:10px; background:var(--bg); border:1px solid var(--bdr); border-radius:8px; color:var(--tx); font-size:13px;" />
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--tx2); margin-bottom:8px;">Select
+            Logo Image (PNG / JPG)</label>
+          <input type="file" id="logoFileInput" accept="image/*" required
+            style="width:100%; padding:10px; background:var(--bg); border:1px solid var(--bdr); border-radius:8px; color:var(--tx); font-size:13px;" />
         </div>
-        <div id="logoUploadStatusMsg" style="display:none; padding:10px; border-radius:8px; font-size:12.5px; margin-bottom:16px; text-align:center;"></div>
+        <div id="logoUploadStatusMsg"
+          style="display:none; padding:10px; border-radius:8px; font-size:12.5px; margin-bottom:16px; text-align:center;">
+        </div>
         <div style="display:flex; gap:10px; justify-content:flex-end;">
-          <button type="button" onclick="closeMillLogoModal()" style="padding:9px 16px; background:var(--bg-hover); color:var(--tx); border:1px solid var(--bdr); border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancel</button>
-          <button type="submit" id="btnUploadLogoSubmit" style="padding:9px 20px; background:var(--accent); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Save Logo</button>
+          <button type="button" onclick="closeMillLogoModal()"
+            style="padding:9px 16px; background:var(--bg-hover); color:var(--tx); border:1px solid var(--bdr); border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Cancel</button>
+          <button type="submit" id="btnUploadLogoSubmit"
+            style="padding:9px 20px; background:var(--accent); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">Save
+            Logo</button>
         </div>
       </form>
     </div>
@@ -4722,7 +4789,7 @@
         container.innerHTML = `
           <div style="text-align:center; padding:40px; background:var(--sur); border:1px solid var(--bdr); border-radius:12px; color:var(--tx2);">
             <div style="font-size:32px; margin-bottom:8px;">✓</div>
-            <div style="font-weight:600; font-size:14px; color:var(--tx);">No Record Alterations or Fraud Alerts Detected</div>
+            <div style="font-weight:600; font-size:14px; color:var(--tx);">No Record Alterations or  Alerts Detected</div>
             <div style="font-size:12px; margin-top:4px;">All uploaded databases match previous snapshot records.</div>
           </div>
         `;
@@ -4784,7 +4851,3 @@
 </body>
 
 </html>
-
-
-
-

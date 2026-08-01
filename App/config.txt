@@ -25,7 +25,7 @@ INDUSTRY_LOGO = static/logo.jpg
 
 # Full path to the .mdb file for this client.
 # If left blank the app auto-detects any .mdb in the data/ folder.
-MDB_FILE=D:\SGRI\SGRI 2025-2026.mdb
+MDB_FILE=D:\ \  2025-2026.mdb
 
 
 # ── AUTO UPDATE ──────────────────────────────────────────────────

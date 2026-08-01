@@ -3,7 +3,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo " ============================================"
-echo "  SGRI Dashboard - Stopping Server (macOS)"
+echo "    Dashboard - Stopping Server (macOS)"
 echo " ============================================"
 echo ""
 
