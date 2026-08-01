@@ -174,8 +174,9 @@
     </div>
 
     <div class="alert {% if error %}show{% endif %}" id="alertBox">
-      {{ error or "Invalid login credentials" }}
+      {{ error if error else "Invalid login credentials" }}
     </div>
+
 
     <form id="loginForm" method="POST" action="/login">
       <div class="form-group">

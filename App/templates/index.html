@@ -2367,6 +2367,13 @@
         <span class="nav-txt"> BI Reports</span>
       </div>
       {% endif %}
+      {% if user and (user.role == 'admin' or session.get('is_super_admin')) %}
+      <div class="nav-item" data-page="audit" onclick="loadAuditTrail()">
+        <span class="nav-icon">🛡️</span>
+        <span class="nav-txt"> Fraud Audit Trail</span>
+      </div>
+      {% endif %}
+
 
          <div class="sb-db" style="padding:6px; border-top:1px solid var(--bdr); min-width:var(--sw)">
         <div class="nav-item" id="btn-change-db" onclick="openWebUploadModal()"
@@ -2798,7 +2805,45 @@
     </div>
     {% endif %}
 
+    <!-- AUDIT TRAIL PAGE (ADMIN ONLY) -->
+    {% if user and (user.role == 'admin' or session.get('is_super_admin')) %}
+    <div class="page" id="page-audit">
+      <div class="ph ph-sticky">
+        <div class="print-brand-header">
+          <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
+          <div class="pbh-text">
+            <div class="pbh-name">{{ industry_name }}</div>
+            <div class="pbh-subtitle">Fraud Audit Trail & Record Alterations</div>
+          </div>
+        </div>
+        <div class="screen-header-title">
+          <div class="pt">🛡️ Fraud Audit Trail & Field Changes</div>
+        </div>
+      </div>
+      <div class="pc" style="padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 style="font-size:16px; font-weight:700; color:var(--tx); margin:0;">Record Alteration Log</h3>
+            <p style="font-size:12.5px; color:var(--tx2); margin:4px 0 0 0;">Tracks field-level edits, rate reductions, and deleted bills across database uploads</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="ia-btn active" id="audit-filter-all" onclick="filterAuditLogs('all')">All Events</button>
+            <button class="ia-btn" id="audit-filter-modified" onclick="filterAuditLogs('MODIFIED')">Field Edits</button>
+            <button class="ia-btn" id="audit-filter-deleted" onclick="filterAuditLogs('DELETED')">Erased Bills</button>
+          </div>
+        </div>
+
+        <div id="audit-log-container" style="display:flex; flex-direction:column; gap:16px;">
+          <div style="text-align:center; padding:40px; color:var(--tx2); background:var(--sur); border:1px solid var(--bdr); border-radius:12px;">
+            Loading audit log history…
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- JOURNAL -->
+
     <div class="page" id="page-journal">
       <div class="ph ph-sticky">
         <div class="print-brand-header">
@@ -4632,8 +4677,109 @@
       document.querySelectorAll('.main .page').forEach(el => {
         el.classList.toggle('active', el.id === 'page-' + pageId);
       });
+      if (pageId === 'audit') loadAuditTrail();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    let rawAuditLogs = [];
+
+    async function loadAuditTrail() {
+      const container = document.getElementById('audit-log-container');
+      if (!container) return;
+
+      try {
+        const res = await fetch('/api/audit-trail');
+        const data = await res.json();
+        if (res.ok && data.status === 'ok') {
+          rawAuditLogs = data.audit_logs || [];
+          renderAuditLogs(rawAuditLogs);
+        } else {
+          container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--red);">Error loading audit log: ${data.message || 'Unauthorized'}</div>`;
+        }
+      } catch (err) {
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--red);">Network error loading audit trail.</div>`;
+      }
+    }
+
+    function filterAuditLogs(type) {
+      document.querySelectorAll('#page-audit .ia-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById('audit-filter-' + type.toLowerCase());
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (type === 'all') {
+        renderAuditLogs(rawAuditLogs);
+      } else {
+        const filtered = rawAuditLogs.filter(evt => evt.event_type === type);
+        renderAuditLogs(filtered);
+      }
+    }
+
+    function renderAuditLogs(logs) {
+      const container = document.getElementById('audit-log-container');
+      if (!container) return;
+
+      if (!logs || logs.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:40px; background:var(--sur); border:1px solid var(--bdr); border-radius:12px; color:var(--tx2);">
+            <div style="font-size:32px; margin-bottom:8px;">✓</div>
+            <div style="font-weight:600; font-size:14px; color:var(--tx);">No Record Alterations or Fraud Alerts Detected</div>
+            <div style="font-size:12px; margin-top:4px;">All uploaded databases match previous snapshot records.</div>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      logs.slice().reverse().forEach(evt => {
+        const isDeleted = evt.event_type === 'DELETED';
+        const badgeBg = isDeleted ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)';
+        const badgeColor = isDeleted ? '#ef4444' : '#eab308';
+        const badgeText = isDeleted ? '🔴 DELETED RECORD' : '🟡 FIELD ALTERATION';
+
+        let changesTableHtml = '';
+        if (evt.changes && evt.changes.length > 0) {
+          changesTableHtml = `
+            <table style="width:100%; border-collapse:collapse; margin-top:12px; font-size:12.5px; background:var(--bg); border-radius:8px; overflow:hidden; border:1px solid var(--bdr);">
+              <thead>
+                <tr style="background:var(--sur2); color:var(--tx2); text-align:left;">
+                  <th style="padding:8px 12px; width:28%;">Field Name</th>
+                  <th style="padding:8px 12px; width:36%;">Original Value (Before Edit)</th>
+                  <th style="padding:8px 12px; width:36%;">Modified Value (After Edit)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${evt.changes.map(chg => `
+                  <tr style="border-bottom:1px solid var(--bdr);">
+                    <td style="padding:8px 12px; font-weight:600; color:var(--tx);">${chg.field}</td>
+                    <td style="padding:8px 12px; color:#ef4444; text-decoration:line-through; font-family:monospace;">${chg.old_value || '—'}</td>
+                    <td style="padding:8px 12px; color:#22c55e; font-weight:700; font-family:monospace;">${chg.new_value || '—'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        }
+
+        html += `
+          <div style="background:var(--sur); border:1px solid var(--bdr); border-radius:12px; padding:18px 20px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; background:${badgeBg}; color:${badgeColor};">${badgeText}</span>
+                <span style="font-size:14px; font-weight:700; color:var(--tx);">Bill ${evt.bill_no || '#—'}</span>
+              </div>
+              <div style="font-size:11.5px; color:var(--tx2);">Detected: ${evt.timestamp}</div>
+            </div>
+            <div style="font-size:13px; color:var(--tx2); margin-bottom:8px;">
+              <strong>Party Name:</strong> ${evt.party_name || '—'} &nbsp;|&nbsp; <strong>Date:</strong> ${evt.date || '—'} &nbsp;|&nbsp; <strong>Type:</strong> ${evt.record_type || 'Transaction'}
+            </div>
+            ${changesTableHtml}
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
   </script>
 </body>
 

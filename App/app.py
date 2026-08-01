@@ -52,14 +52,21 @@ else:
 if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
+from datetime import timedelta
 app  = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = os.environ.get('SESSION_SECRET', 'RiceMillDashboardSessionSecret2026!')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=int(os.environ.get('SESSION_TIMEOUT_HOURS', 12)))
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 VERSION = "1.1.0"
+
 
 # Import Crypto, Auth & Tenants helpers (resolved from sys.path)
 import crypto_utils
 import auth
 import tenants
+import audit_engine
+
 
 SUPER_ADMIN_PASSWORD = os.environ.get('SUPER_ADMIN_PASSWORD', 'SuperAdminPass2026!').strip()
 
@@ -1560,23 +1567,27 @@ def login_page():
     if request.method == 'GET':
         if 'user' in session:
             return redirect(url_for('index'))
-        return render_template('login.html')
-        
+        expired_msg = "⚠️ Your session has expired due to inactivity. Please sign in again." if request.args.get('expired') == '1' else None
+        return render_template('login.html', error=expired_msg)
+
     company_code = request.form.get('company_code', 'SGRI').strip()
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '').strip()
-    
+
     user, err_msg = auth.authenticate_user(company_code, username, password)
     if user:
+        session.permanent = True
         session['user'] = user
         session['role'] = user.get('role', 'staff')
         session['tenant_id'] = user.get('tenant_id', 'client_sgri')
         session['company_code'] = user.get('company_code', 'SGRI')
         session['company_name'] = user.get('company_name', 'Rice Mill')
+        session['last_active'] = int(time.time())
         next_url = request.args.get('next') or url_for('index')
         return redirect(next_url)
-    
+
     return render_template('login.html', error=err_msg or "Invalid login credentials.", company_code=company_code)
+
 
 @app.route('/logout')
 def logout():
@@ -1975,6 +1986,14 @@ def api_sync_database():
                 _tenant_caches[tenant_id]["mtime"] = None
                 _tenant_caches[tenant_id]["tables"].clear()
 
+        # Trigger AuditEngine snapshot diffing
+        try:
+            tx_data = get_transactions('all')
+            if isinstance(tx_data, list):
+                audit_engine.AuditEngine.process_upload(tenant_id, tx_data)
+        except Exception as audit_err:
+            print("AuditEngine process_upload error:", audit_err)
+
         return jsonify({
             'status': 'ok',
             'message': f'Database synced successfully for {company_name}',
@@ -1983,11 +2002,22 @@ def api_sync_database():
             'size_bytes': len(mdb_bytes)
         })
 
-
-
-
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Sync failed: {str(e)}'}), 500
+
+@app.route('/api/audit-trail', methods=['GET'])
+@auth.login_required(role='admin')
+def api_audit_trail():
+    user = session.get('user', {})
+    tenant_id = user.get('tenant_id', 'client_sgri') if isinstance(user, dict) else session.get('tenant_id', 'client_sgri')
+
+    audit_logs = audit_engine.AuditEngine.get_audit_log(tenant_id)
+    return jsonify({
+        'status': 'ok',
+        'audit_logs': audit_logs,
+        'count': len(audit_logs)
+    })
+
 
 
 @app.before_request
@@ -2015,10 +2045,21 @@ def restrict_unlicensed():
     if auth_enabled:
         user = session.get('user')
         if not user:
-
             if request.path.startswith('/api/'):
                 return jsonify({'error': 'unauthorized', 'message': 'Authentication required'}), 401
             return redirect(url_for('login_page', next=request.url))
+
+        # Check session inactivity timeout (default 12 hours)
+        now_ts = int(time.time())
+        last_active = session.get('last_active')
+        timeout_sec = int(os.environ.get('SESSION_TIMEOUT_SECONDS', 12 * 3600))
+        if last_active and (now_ts - last_active > timeout_sec):
+            session.clear()
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'session_expired', 'message': 'Session expired due to inactivity. Please log in again.'}), 401
+            return redirect(url_for('login_page', expired=1))
+        session['last_active'] = now_ts
+
 
 
 @app.route('/license')
