@@ -13,25 +13,38 @@
     @font-face {
       font-family: 'Inter';
       src: url('/static/fonts/inter-regular.woff2') format('woff2');
-      font-weight: 400; font-style: normal; font-display: swap;
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
     }
+
     @font-face {
       font-family: 'Inter';
       src: url('/static/fonts/inter-medium.woff2') format('woff2');
-      font-weight: 500; font-style: normal; font-display: swap;
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
     }
+
     @font-face {
       font-family: 'Inter';
       src: url('/static/fonts/inter-semibold.woff2') format('woff2');
-      font-weight: 600; font-style: normal; font-display: swap;
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
     }
+
     @font-face {
       font-family: 'Inter';
       src: url('/static/fonts/inter-bold.woff2') format('woff2');
-      font-weight: 700; font-style: normal; font-display: swap;
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
     }
 
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
@@ -87,11 +100,13 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
+
     .header-left {
       display: flex;
       align-items: center;
       gap: 12px;
     }
+
     .header-logo {
       width: 36px;
       height: 36px;
@@ -99,12 +114,14 @@
       object-fit: cover;
       border: 1px solid var(--bdr);
     }
+
     .header-title {
       font-size: 16px;
       font-weight: 600;
       color: var(--tx);
       letter-spacing: -0.3px;
     }
+
     .header-sub {
       font-size: 11px;
       color: var(--tx3);
@@ -162,6 +179,7 @@
       margin-bottom: 6px;
       letter-spacing: -0.3px;
     }
+
     .card-sub {
       font-size: 13px;
       color: var(--tx2);
@@ -183,11 +201,14 @@
       justify-content: center;
       gap: 12px;
     }
-    .dropzone:hover, .dropzone.dragover {
+
+    .dropzone:hover,
+    .dropzone.dragover {
       border-color: var(--accent);
       background: rgba(201, 100, 66, 0.04);
       transform: translateY(-1px);
     }
+
     .dz-icon {
       width: 52px;
       height: 52px;
@@ -198,6 +219,7 @@
       justify-content: center;
       color: var(--accent);
     }
+
     .dz-icon svg {
       width: 26px;
       height: 26px;
@@ -207,17 +229,21 @@
       stroke-linecap: round;
       stroke-linejoin: round;
     }
+
     .dz-title {
       font-size: 14.5px;
       font-weight: 600;
       color: var(--tx);
     }
+
     .dz-hint {
       font-size: 12px;
       color: var(--tx3);
     }
 
-    input[type="file"] { display: none; }
+    input[type="file"] {
+      display: none;
+    }
 
     /* PROGRESS */
     .progress-box {
@@ -225,6 +251,7 @@
       margin-top: 24px;
       text-align: left;
     }
+
     .progress-status {
       display: flex;
       justify-content: space-between;
@@ -232,6 +259,7 @@
       color: var(--tx2);
       font-weight: 500;
     }
+
     .progress-bar-track {
       background: var(--sur2);
       height: 8px;
@@ -240,6 +268,7 @@
       margin-top: 8px;
       border: 1px solid var(--bdr);
     }
+
     .progress-bar-fill {
       background: var(--accent);
       height: 100%;
@@ -257,11 +286,13 @@
       text-align: left;
       line-height: 1.4;
     }
+
     .alert-success {
       background: var(--gbg);
       border: 1px solid rgba(45, 122, 74, 0.3);
       color: var(--green);
     }
+
     .alert-error {
       background: var(--rbg);
       border: 1px solid rgba(168, 56, 32, 0.3);
@@ -283,6 +314,7 @@
       transition: background 0.15s;
       display: none;
     }
+
     .btn-primary:hover {
       background: var(--accent-lt);
     }
@@ -292,11 +324,13 @@
       font-size: 12.5px;
       color: var(--tx3);
     }
+
     .footer-link a {
       color: var(--accent);
       text-decoration: none;
       font-weight: 600;
     }
+
     .footer-link a:hover {
       text-decoration: underline;
     }
@@ -310,7 +344,6 @@
       <img src="/logo" class="header-logo" alt="Logo" />
       <div>
         <div class="header-title">{{ company_name }}</div>
-        <div class="header-sub">Cloud Sync & Audit Engine</div>
       </div>
     </div>
     <div class="badge-code">{{ company_code }}</div>
@@ -322,12 +355,16 @@
         <span>🌾</span> <span>{{ company_name }}</span>
       </div>
 
-      <h1 class="card-title">Sync Database to Dashboard</h1>
-      <p class="card-sub">Select or drag & drop your Access Database file (<code>.mdb</code>) to sync live orders, stocks, and accounting ledgers.</p>
+      <h1 class="card-title">Upload Latest File</h1>
+      <p class="card-sub">Select or drag & drop your Access Database file (<code>.mdb</code>) </p>
 
       <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
         <div class="dz-icon">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
         </div>
         <div class="dz-title" id="dzTitle">Click to Browse or Drag & Drop File</div>
         <div class="dz-hint" id="dzHint">Supports Access Database <code>.mdb</code> files</div>
@@ -348,15 +385,21 @@
       <div class="alert alert-success" id="successAlert"></div>
       <div class="alert alert-error" id="errorAlert"></div>
 
-      <button class="btn-primary" id="btnDashboard" onclick="window.location.href='/'">Open Dashboard Analytics →</button>
+      <button class="btn-primary" id="btnDashboard" onclick="window.location.href='/'">Open Dashboard Analytics
+        →</button>
 
-      <div class="tip-card" style="margin-top:24px; background:var(--sur2); border:1px solid var(--bdr); border-radius:var(--r); padding:16px; font-size:12.5px; color:var(--tx2); text-align:left; line-height:1.5;">
+      <div class="tip-card"
+        style="margin-top:24px; background:var(--sur2); border:1px solid var(--bdr); border-radius:var(--r); padding:16px; font-size:12.5px; color:var(--tx2); text-align:left; line-height:1.5;">
         <div style="font-weight:600; color:var(--tx); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
           <span>📌</span> <span>Fast Access Tips for Desktop</span>
         </div>
         <ul style="padding-left:18px; margin:0;">
-          <li style="margin-bottom:4px;"><strong>Bookmark (Ctrl + D)</strong>: Press <kbd style="background:var(--bg); border:1px solid var(--bdr); border-radius:4px; padding:2px 6px; font-size:11px; font-family:var(--mono);">Ctrl + D</kbd> to bookmark this page on your browser toolbar.</li>
-          <li><strong>Create Desktop Icon</strong>: In Chrome/Edge, click browser menu <strong>⋮</strong> &rarr; <em>Save & Share</em> &rarr; <em>Create Shortcut...</em></li>
+          <li style="margin-bottom:4px;"><strong>Bookmark (Ctrl + D)</strong>: Press <kbd
+              style="background:var(--bg); border:1px solid var(--bdr); border-radius:4px; padding:2px 6px; font-size:11px; font-family:var(--mono);">Ctrl
+              + D</kbd> to bookmark this page on your browser toolbar.</li>
+          <li><strong>Create Desktop Icon</strong>: In Chrome/Edge, click browser menu <strong>⋮</strong> &rarr;
+            <em>Save & Share</em> &rarr; <em>Create Shortcut...</em>
+          </li>
         </ul>
       </div>
 
@@ -448,7 +491,7 @@
           try {
             const resp = JSON.parse(xhr.responseText);
             if (resp.status === 'ok') {
-              showSuccess(`✓ Database file '<strong>${file.name}</strong>' uploaded successfully! Reports and Audit Log have been updated.`);
+              showSuccess(`✓ Database file '<strong>${file.name}</strong>' uploaded successfully!`);
               document.getElementById('btnDashboard').style.display = 'block';
             } else {
               showError(resp.message || 'Upload failed');
@@ -487,4 +530,5 @@
     }
   </script>
 </body>
+
 </html>
