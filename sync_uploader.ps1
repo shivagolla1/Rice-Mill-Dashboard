@@ -48,64 +48,49 @@ try {
     $CompressedBytes = $Ms.ToArray()
     $Ms.Close()
 
-    # Prepare HTTPS Multipart Upload
-    $Boundary = "----WebKitFormBoundary" + [Guid]::NewGuid().ToString("N")
+    # Convert compressed bytes to Base64 (eliminates binary stream locks on Windows 7)
+    $B64Data = [System.Convert]::ToBase64String($CompressedBytes)
     $Endpoint = "$CloudUrl/api/sync-database"
-
-    $LF = "`r`n"
-    $Header = "--$Boundary$LF" +
-              "Content-Disposition: form-data; name=`"file`"; filename=`"$FileName`"$LF" +
-              "Content-Type: application/octet-stream$LF$LF"
-    $Footer = "$LF--$Boundary--$LF"
-
-    $HeaderBytes = [System.Text.Encoding]::UTF8.GetBytes($Header)
-    $FooterBytes = [System.Text.Encoding]::UTF8.GetBytes($Footer)
-
-    $BodyStream = New-Object System.IO.MemoryStream
-    $BodyStream.Write($HeaderBytes, 0, $HeaderBytes.Length)
-    $BodyStream.Write($CompressedBytes, 0, $CompressedBytes.Length)
-    $BodyStream.Write($FooterBytes, 0, $FooterBytes.Length)
-    $BodyBytes = $BodyStream.ToArray()
-    $BodyStream.Close()
-
-    # Configure TLS 1.2 & Disable Expect100Continue for modern cloud endpoints (Pure PowerShell / Zero-Python)
-    [System.Net.ServicePointManager]::Expect100Continue = $false
-    [System.Net.ServicePointManager]::CheckCertificateRevocationList = $false
-    try {
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
-    } catch {}
-
-    try {
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
-    } catch {
-        try {
-            # Integer enum values for Win7 / .NET 3.5: Tls12 (3072) + Tls11 (768) + Tls (192) + Ssl3 (48)
-            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]3072 -bor [System.Net.SecurityProtocolType]768 -bor [System.Net.SecurityProtocolType]192 -bor [System.Net.SecurityProtocolType]48
-        } catch {}
-    }
+    $JsonPayload = "{`"data`":`"$B64Data`",`"chunk_idx`":0,`"total_chunks`":1}"
 
     $ResponseStr = ""
-    try {
-        $WebClient = New-Object System.Net.WebClient
-        $WebClient.Headers.Add("Content-Type", "multipart/form-data; boundary=$Boundary")
-        $WebClient.Headers.Add("X-License-Key", $LicenseKey)
-        $WebClient.Headers.Add("X-Company-Code", $CompanyCode)
 
-        $ResponseBytes = $WebClient.UploadData($Endpoint, "POST", $BodyBytes)
-        $ResponseStr = [System.Text.Encoding]::UTF8.GetString($ResponseBytes)
+    # Strategy 1: Native Windows C++ COM Engine (WinHttp.WinHttpRequest.5.1) - Bypasses .NET Schannel bugs on Win7
+    try {
+        $WinHttp = New-Object -ComObject WinHttp.WinHttpRequest.5.1
+        # Option 9: Enable TLS 1.2 (2048) + TLS 1.1 (512) + TLS 1.0 (128) = 2688
+        try { $WinHttp.Option(9) = 2688 } catch { try { $WinHttp.Option(9) = 2048 } catch {} }
+        # Option 4: Ignore SSL Cert Errors if any
+        try { $WinHttp.Option(4) = 13056 } catch {}
+
+        $WinHttp.Open("POST", $Endpoint, $false)
+        $WinHttp.SetRequestHeader("Content-Type", "application/json")
+        if ($LicenseKey) { $WinHttp.SetRequestHeader("X-License-Key", $LicenseKey) }
+        if ($CompanyCode) { $WinHttp.SetRequestHeader("X-Company-Code", $CompanyCode) }
+
+        $WinHttp.Send($JsonPayload)
+        $ResponseStr = $WinHttp.ResponseText
     } catch {
-        # Pure PowerShell HttpWebRequest fallback for legacy Win 7 socket handling
+        # Strategy 2: Native PowerShell HttpWebRequest with Base64 JSON payload
+        [System.Net.ServicePointManager]::Expect100Continue = $false
+        [System.Net.ServicePointManager]::CheckCertificateRevocationList = $false
+        try { [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true} } catch {}
+        try {
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]3072 -bor [System.Net.SecurityProtocolType]768 -bor [System.Net.SecurityProtocolType]192 -bor [System.Net.SecurityProtocolType]48
+        } catch {}
+
+        $JsonBytes = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
         $Request = [System.Net.HttpWebRequest]::Create($Endpoint)
         $Request.Method = "POST"
-        $Request.ContentType = "multipart/form-data; boundary=$Boundary"
-        $Request.ContentLength = $BodyBytes.Length
-        $Request.Headers.Add("X-License-Key", $LicenseKey)
-        $Request.Headers.Add("X-Company-Code", $CompanyCode)
-        $Request.Timeout = 60000
+        $Request.ContentType = "application/json"
+        $Request.ContentLength = $JsonBytes.Length
+        if ($LicenseKey) { $Request.Headers.Add("X-License-Key", $LicenseKey) }
+        if ($CompanyCode) { $Request.Headers.Add("X-Company-Code", $CompanyCode) }
+        $Request.Timeout = 90000
         $Request.KeepAlive = $false
 
         $ReqStream = $Request.GetRequestStream()
-        $ReqStream.Write($BodyBytes, 0, $BodyBytes.Length)
+        $ReqStream.Write($JsonBytes, 0, $JsonBytes.Length)
         $ReqStream.Close()
 
         $Response = $Request.GetResponse()
@@ -138,6 +123,7 @@ try {
     }
     [System.Windows.Forms.MessageBox]::Show("Sync Failed: " + $ErrMsg, "Rice Mill Sync Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
 }
+
 
 
 
