@@ -324,16 +324,22 @@ def get_current_tenant_id():
         return session['tenant_id']
     return 'client_default'
 
-def get_current_tenant_mdb_path():
+def get_current_tenant_mdb_path(tenant_id=None):
     """Return absolute path to the active tenant's Database.mdb file."""
-    tenant_id = get_current_tenant_id()
+    if not tenant_id:
+        tenant_id = get_current_tenant_id()
     tenant_dir = tenants.get_tenant_dir(tenant_id)
     tenant_mdb = os.path.join(tenant_dir, 'Database.mdb')
     if os.path.exists(tenant_mdb):
         return tenant_mdb
-    # Fallback to single-tenant MDB_PATH ONLY for primary tenant client_default
-    if tenant_id == 'client_default' and 'MDB_PATH' in globals() and MDB_PATH and os.path.exists(MDB_PATH):
-        return MDB_PATH
+    # Initial migration/setup: copy single-tenant MDB_PATH to canonical tenant_mdb if present
+    if 'MDB_PATH' in globals() and MDB_PATH and os.path.exists(MDB_PATH):
+        try:
+            import shutil
+            shutil.copy2(MDB_PATH, tenant_mdb)
+            return tenant_mdb
+        except Exception:
+            return MDB_PATH
     return tenant_mdb
 
 def get_cached_table(tname, tenant_id=None):
@@ -341,7 +347,7 @@ def get_cached_table(tname, tenant_id=None):
     if not tenant_id:
         tenant_id = get_current_tenant_id()
 
-    mdb_path = get_current_tenant_mdb_path()
+    mdb_path = get_current_tenant_mdb_path(tenant_id)
     if not mdb_path or not os.path.exists(mdb_path):
         return [], [], []
 
@@ -378,16 +384,12 @@ def get_cached_db():
     """Return a dict-like helper serving tables from the active tenant's database."""
     class CachedDB:
         def __init__(self):
-            self._tables = None
-        def tables(self):
-            if self._tables is None:
-                mdb_path = get_current_tenant_mdb_path()
-                if not mdb_path or not os.path.exists(mdb_path): return []
-                try:
-                    db = mdb_open(mdb_path)
-                    self._tables = mdb_tables(db)
-                except: self._tables = []
-            return self._tables
+            pass
+        def get(self, tname, default=None):
+            cols, types, rows = get_cached_table(tname)
+            if not cols:
+                return default
+            return {'cols': cols, 'types': types, 'rows': rows}
     return CachedDB()
 
 def read_table(tname):
@@ -1728,30 +1730,39 @@ def api_upload_database():
     with open(target_mdb, 'wb') as out_f:
         out_f.write(mdb_bytes)
 
+    # Force timestamp update to ensure mtime changes
+    try:
+        os.utime(target_mdb, None)
+    except Exception:
+        pass
+
     if tenant_id == 'client_default':
         global MDB_PATH
         MDB_PATH = target_mdb
 
-    # Invalidate cache for this tenant
+    # Wipe all in-memory table caches across all keys
     with _tenant_cache_lock:
-        if tenant_id in _tenant_caches:
-            _tenant_caches[tenant_id]["mtime"] = None
-            _tenant_caches[tenant_id]["tables"].clear()
+        _tenant_caches.clear()
 
-    # Trigger AuditEngine snapshot diffing
+    # Trigger AuditEngine snapshot creation & diffing for this tenant
     try:
-        tx_data = get_transactions('all')
+        tx_data = get_transactions('all', tenant_id=tenant_id)
         if isinstance(tx_data, list):
             audit_engine.AuditEngine.process_upload(tenant_id, tx_data)
     except Exception as audit_err:
         print("AuditEngine process_upload error:", audit_err)
 
+    # Purge RAM cache again after audit snapshot generation to guarantee fresh reads on dashboard open
+    with _tenant_cache_lock:
+        _tenant_caches.clear()
+
     return jsonify({
         'status': 'ok',
-        'message': f"File updated successfully for {tenant.get('company_name', 'Rice Mill')}! Reports will now reflect the new data.",
+        'message': f"File updated successfully for {tenant.get('company_name', 'Rice Mill')}! Reports and Audit Log have been updated.",
         'filename': f.filename,
         'size_bytes': len(mdb_bytes)
     })
+
 
 
 
