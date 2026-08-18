@@ -1908,40 +1908,31 @@ echo.
 pause
 """
 
-    search_dirs = [os.path.dirname(EXE_DIR), EXE_DIR, os.getcwd(), os.path.dirname(os.path.abspath(__file__))]
+    readme_content = f"""====================================================
+  {company_name} ({company_code}) — Quick Upload Setup
+====================================================
 
-    def read_file_content(filename):
-        for b in search_dirs:
-            p = os.path.join(b, filename)
-            if os.path.exists(p):
-                try:
-                    with open(p, 'r', encoding='utf-8') as f:
-                        return f.read()
-                except Exception:
-                    with open(p, 'rb') as f:
-                        return f.read()
-        return None
-
-    bat_code = read_file_content('sync_now.bat')
-    ps1_code = read_file_content('sync_uploader.ps1')
+INSTRUCTIONS FOR FIRST-TIME SETUP:
+1. Double-click "create_shortcut.bat".
+2. A shortcut named "Upload Database to Cloud.url" will appear on your Desktop.
+3. Double-click "Upload Database to Cloud.url" on your Desktop anytime to drag and drop your Access Database (.mdb) file.
+"""
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.writestr('sync_config.txt', config_content)
         zf.writestr('create_shortcut.bat', shortcut_bat_content)
-        if ps1_code:
-            zf.writestr('sync_uploader.ps1', ps1_code)
-        if bat_code:
-            zf.writestr('sync_now.bat', bat_code)
+        zf.writestr('README.txt', readme_content)
 
     zip_buffer.seek(0)
-    safe_filename = f"{company_code}_2Click_Uploader.zip"
+    safe_filename = f"{company_code}_Desktop_Uploader.zip"
 
     return Response(
         zip_buffer.getvalue(),
         mimetype='application/zip',
         headers={'Content-Disposition': f'attachment; filename={safe_filename}'}
     )
+
 
 
 
