@@ -1884,78 +1884,64 @@ def api_super_admin_download_uploader(license_key):
     company_name = tenant.get('company_name', 'Rice Mill')
     secret_token = tenant.get('secret_token', license_key)
     cloud_url = request.host_url.rstrip('/')
+    target_url = f"{cloud_url}/quick-upload?code={company_code}&token={secret_token}"
 
     config_content = f"""# Rice Mill Dashboard — Client Sync Configuration
 CLOUD_URL={cloud_url}
 LICENSE_KEY={license_key}
 COMPANY_CODE={company_code}
 SYNC_SECRET_TOKEN={secret_token}
+UPLOAD_URL={target_url}
 """
 
-    shortcut_bat_content = """@echo off
-title Rice Mill Dashboard - Desktop Shortcut Creator
-setlocal enabledelayedexpansion
-
-set "SCRIPT_DIR=%~dp0"
-set "CONFIG_FILE=%SCRIPT_DIR%sync_config.txt"
-
-set "CLOUD_URL=https://ricemilldashboard.up.railway.app"
-set "COMPANY_CODE=DEMO"
-set "SYNC_SECRET_TOKEN=RiceMillSyncSecretToken2026!"
-
-if exist "%CONFIG_FILE%" (
-    for /f "usebackq tokens=1,2 delims==" %%a in ("%CONFIG_FILE%") do (
-        set "k=%%a"
-        set "v=%%b"
-        if "!k!"=="CLOUD_URL" set "CLOUD_URL=!v!"
-        if "!k!"=="COMPANY_CODE" set "COMPANY_CODE=!v!"
-        if "!k!"=="SYNC_SECRET_TOKEN" set "SYNC_SECRET_TOKEN=!v!"
-        if "!k!"=="LICENSE_KEY" if "!SYNC_SECRET_TOKEN!"=="" set "SYNC_SECRET_TOKEN=!v!"
-    )
-)
-
-set "TARGET_URL=%CLOUD_URL%/quick-upload?code=%COMPANY_CODE%&token=%SYNC_SECRET_TOKEN%"
-
-powershell -ExecutionPolicy Bypass -NoProfile -Command "$desktop=[Environment]::GetFolderPath('Desktop'); $lnk=Join-Path $desktop 'Upload Database to Cloud.url'; $writer=[System.IO.File]::CreateText($lnk); $writer.WriteLine('[InternetShortcut]'); $writer.WriteLine('URL=%TARGET_URL%'); $writer.WriteLine('IconIndex=0'); $writer.Close()"
-
-echo.
-echo ====================================================
-echo  [SUCCESS] Desktop Shortcut Created!
-echo ====================================================
-echo.
-echo  Shortcut Name: Upload Database to Cloud.url
-echo  Target URL:   %TARGET_URL%
-echo.
-echo  Double-click "Upload Database to Cloud" on your
-echo  Desktop anytime to sync your database.
-echo.
-pause
+    html_launcher_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Open Quick Upload — {company_name}</title>
+  <meta http-equiv="refresh" content="0;url={target_url}">
+  <style>
+    body {{ font-family: 'Segoe UI', system-ui, sans-serif; background: #faf7f2; color: #1c1a16; text-align: center; padding: 60px 20px; }}
+    .card {{ background: #f2ede4; border: 1px solid #ddd8ce; border-radius: 12px; max-width: 480px; margin: 0 auto; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }}
+    .btn {{ display: inline-block; background: #c96442; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; margin-top: 16px; }}
+    .btn:hover {{ background: #a84e32; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🌾 Opening {company_name} Quick Upload...</h2>
+    <p style="color:#5a5248; font-size:14px; margin-top:8px;">Redirecting you to the cloud database upload portal.</p>
+    <a href="{target_url}" class="btn">Click Here if Not Redirected Automatically →</a>
+  </div>
+</body>
+</html>
 """
 
     readme_content = f"""====================================================
   {company_name} ({company_code}) — Quick Upload Setup
 ====================================================
 
-INSTRUCTIONS FOR FIRST-TIME SETUP:
-1. Double-click "create_shortcut.bat".
-2. A shortcut named "Upload Database to Cloud.url" will appear on your Desktop.
-3. Double-click "Upload Database to Cloud.url" on your Desktop anytime to drag and drop your Access Database (.mdb) file.
+INSTRUCTIONS FOR FIRST-TIME SETUP (100% Antivirus Clean):
+1. Double-click "Open_Upload_Page.html".
+2. It will open your web browser directly to your mill's quick upload portal.
+3. In Chrome or Edge, click Ctrl + D to bookmark the page, or drag the lock icon in the address bar to your desktop!
 """
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.writestr('sync_config.txt', config_content)
-        zf.writestr('create_shortcut.bat', shortcut_bat_content)
+        zf.writestr('Open_Upload_Page.html', html_launcher_content)
         zf.writestr('README.txt', readme_content)
 
     zip_buffer.seek(0)
-    safe_filename = f"{company_code}_Desktop_Uploader.zip"
+    safe_filename = f"{company_code}_Quick_Upload.zip"
 
     return Response(
         zip_buffer.getvalue(),
         mimetype='application/zip',
         headers={'Content-Disposition': f'attachment; filename={safe_filename}'}
     )
+
 
 
 
