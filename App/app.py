@@ -1874,7 +1874,6 @@ def api_super_admin_update_subscription():
 @app.route('/api/super-admin/download-uploader/<license_key>')
 @auth.login_required(role='super_admin')
 def api_super_admin_download_uploader(license_key):
-    import io, zipfile
     from flask import Response
     tenant = tenants.get_tenant_by_key(license_key)
     if not tenant:
@@ -1885,14 +1884,6 @@ def api_super_admin_download_uploader(license_key):
     secret_token = tenant.get('secret_token', license_key)
     cloud_url = request.host_url.rstrip('/')
     target_url = f"{cloud_url}/quick-upload?code={company_code}&token={secret_token}"
-
-    config_content = f"""# Rice Mill Dashboard — Client Sync Configuration
-CLOUD_URL={cloud_url}
-LICENSE_KEY={license_key}
-COMPANY_CODE={company_code}
-SYNC_SECRET_TOKEN={secret_token}
-UPLOAD_URL={target_url}
-"""
 
     html_launcher_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1917,30 +1908,14 @@ UPLOAD_URL={target_url}
 </html>
 """
 
-    readme_content = f"""====================================================
-  {company_name} ({company_code}) — Quick Upload Setup
-====================================================
-
-INSTRUCTIONS FOR FIRST-TIME SETUP (100% Antivirus Clean):
-1. Double-click "Open_Upload_Page.html".
-2. It will open your web browser directly to your mill's quick upload portal.
-3. In Chrome or Edge, click Ctrl + D to bookmark the page, or drag the lock icon in the address bar to your desktop!
-"""
-
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr('sync_config.txt', config_content)
-        zf.writestr('Open_Upload_Page.html', html_launcher_content)
-        zf.writestr('README.txt', readme_content)
-
-    zip_buffer.seek(0)
-    safe_filename = f"{company_code}_Quick_Upload.zip"
+    safe_filename = f"Upload_Database_{company_code}.html"
 
     return Response(
-        zip_buffer.getvalue(),
-        mimetype='application/zip',
+        html_launcher_content,
+        mimetype='text/html',
         headers={'Content-Disposition': f'attachment; filename={safe_filename}'}
     )
+
 
 
 
