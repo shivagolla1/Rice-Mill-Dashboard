@@ -1,6 +1,6 @@
 # Rice Mill Dashboard - Native 2-Click Cloud Sync Uploader (Zero-Python Required)
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+try { Add-Type -AssemblyName System.IO.Compression -ErrorAction SilentlyContinue } catch {}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $ConfigFile = Join-Path $ScriptDir "sync_config.txt"
@@ -68,21 +68,33 @@ try {
     $BodyBytes = $BodyStream.ToArray()
     $BodyStream.Close()
 
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+    # Configure TLS 1.2 for modern cloud endpoints with Windows 7 / .NET 3.5 fallback
+    try {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
+    } catch {
+        try {
+            # Integer enum values for Win7 / .NET 3.5: Tls12 (3072) + Tls11 (768) + Tls (192)
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]3072 -bor [System.Net.SecurityProtocolType]768 -bor [System.Net.SecurityProtocolType]192
+        } catch {}
+    }
+
     $WebClient = New-Object System.Net.WebClient
     $WebClient.Headers.Add("Content-Type", "multipart/form-data; boundary=$Boundary")
     $WebClient.Headers.Add("X-License-Key", $LicenseKey)
     $WebClient.Headers.Add("X-Company-Code", $CompanyCode)
 
-
     $ResponseBytes = $WebClient.UploadData($Endpoint, "POST", $BodyBytes)
     $ResponseStr = [System.Text.Encoding]::UTF8.GetString($ResponseBytes)
 
     $MillName = if ($CompanyCode) { $CompanyCode } else { "Dashboard" }
-    try {
-        $JsonResp = $ResponseStr | ConvertFrom-Json
-        if ($JsonResp.company_name) { $MillName = $JsonResp.company_name }
-    } catch {}
+    if ($ResponseStr -match '"company_name"\s*:\s*"([^"]+)"') {
+        $MillName = $Matches[1]
+    } else {
+        try {
+            $JsonResp = $ResponseStr | ConvertFrom-Json
+            if ($JsonResp.company_name) { $MillName = $JsonResp.company_name }
+        } catch {}
+    }
 
     [System.Windows.Forms.MessageBox]::Show("Database File '$FileName' Synced Successfully to $MillName!", "Rice Mill Dashboard", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
@@ -96,5 +108,6 @@ try {
     }
     [System.Windows.Forms.MessageBox]::Show("Sync Failed: " + $ErrMsg, "Rice Mill Sync Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
 }
+
 
 
