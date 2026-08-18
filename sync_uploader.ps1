@@ -68,23 +68,53 @@ try {
     $BodyBytes = $BodyStream.ToArray()
     $BodyStream.Close()
 
-    # Configure TLS 1.2 for modern cloud endpoints with Windows 7 / .NET 3.5 fallback
+    # Configure TLS 1.2 & Disable Expect100Continue for modern cloud endpoints (Pure PowerShell / Zero-Python)
+    [System.Net.ServicePointManager]::Expect100Continue = $false
+    [System.Net.ServicePointManager]::CheckCertificateRevocationList = $false
+    try {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+    } catch {}
+
     try {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
     } catch {
         try {
-            # Integer enum values for Win7 / .NET 3.5: Tls12 (3072) + Tls11 (768) + Tls (192)
-            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]3072 -bor [System.Net.SecurityProtocolType]768 -bor [System.Net.SecurityProtocolType]192
+            # Integer enum values for Win7 / .NET 3.5: Tls12 (3072) + Tls11 (768) + Tls (192) + Ssl3 (48)
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]3072 -bor [System.Net.SecurityProtocolType]768 -bor [System.Net.SecurityProtocolType]192 -bor [System.Net.SecurityProtocolType]48
         } catch {}
     }
 
-    $WebClient = New-Object System.Net.WebClient
-    $WebClient.Headers.Add("Content-Type", "multipart/form-data; boundary=$Boundary")
-    $WebClient.Headers.Add("X-License-Key", $LicenseKey)
-    $WebClient.Headers.Add("X-Company-Code", $CompanyCode)
+    $ResponseStr = ""
+    try {
+        $WebClient = New-Object System.Net.WebClient
+        $WebClient.Headers.Add("Content-Type", "multipart/form-data; boundary=$Boundary")
+        $WebClient.Headers.Add("X-License-Key", $LicenseKey)
+        $WebClient.Headers.Add("X-Company-Code", $CompanyCode)
 
-    $ResponseBytes = $WebClient.UploadData($Endpoint, "POST", $BodyBytes)
-    $ResponseStr = [System.Text.Encoding]::UTF8.GetString($ResponseBytes)
+        $ResponseBytes = $WebClient.UploadData($Endpoint, "POST", $BodyBytes)
+        $ResponseStr = [System.Text.Encoding]::UTF8.GetString($ResponseBytes)
+    } catch {
+        # Pure PowerShell HttpWebRequest fallback for legacy Win 7 socket handling
+        $Request = [System.Net.HttpWebRequest]::Create($Endpoint)
+        $Request.Method = "POST"
+        $Request.ContentType = "multipart/form-data; boundary=$Boundary"
+        $Request.ContentLength = $BodyBytes.Length
+        $Request.Headers.Add("X-License-Key", $LicenseKey)
+        $Request.Headers.Add("X-Company-Code", $CompanyCode)
+        $Request.Timeout = 60000
+        $Request.KeepAlive = $false
+
+        $ReqStream = $Request.GetRequestStream()
+        $ReqStream.Write($BodyBytes, 0, $BodyBytes.Length)
+        $ReqStream.Close()
+
+        $Response = $Request.GetResponse()
+        $RespStream = $Response.GetResponseStream()
+        $Reader = New-Object System.IO.StreamReader($RespStream)
+        $ResponseStr = $Reader.ReadToEnd()
+        $Reader.Close()
+        $Response.Close()
+    }
 
     $MillName = if ($CompanyCode) { $CompanyCode } else { "Dashboard" }
     if ($ResponseStr -match '"company_name"\s*:\s*"([^"]+)"') {
@@ -108,6 +138,7 @@ try {
     }
     [System.Windows.Forms.MessageBox]::Show("Sync Failed: " + $ErrMsg, "Rice Mill Sync Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
 }
+
 
 
 
