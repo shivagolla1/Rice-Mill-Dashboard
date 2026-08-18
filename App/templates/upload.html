@@ -1,122 +1,358 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Quick Database Upload — {{ company_name }}</title>
-  <style>
-    :root {
-      --bg: #090d16;
-      --sur: #0f172a;
-      --sur2: #1e293b;
-      --bdr: #334155;
-      --tx: #f8fafc;
-      --tx2: #94a3b8;
-      --primary: #38bdf8;
-      --primary-hover: #0284c7;
-      --green: #22c55e;
-      --red: #ef4444;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--bg); color: var(--tx); min-height: 100vh;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 20px; font-size: 14px;
-    }
-    .upload-card {
-      background: var(--sur); border: 1px solid var(--bdr); border-radius: 16px;
-      padding: 32px; max-width: 520px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      text-align: center; position: relative; overflow: hidden;
-    }
-    .mill-badge {
-      display: inline-flex; align-items: center; gap: 8px; background: rgba(56, 189, 248, 0.1);
-      border: 1px solid rgba(56, 189, 248, 0.3); color: var(--primary); padding: 6px 14px;
-      border-radius: 20px; font-size: 12.5px; font-weight: 600; margin-bottom: 20px;
-    }
-    .card-title { font-size: 22px; font-weight: 700; color: var(--tx); margin-bottom: 8px; }
-    .card-sub { font-size: 13px; color: var(--tx2); margin-bottom: 28px; line-height: 1.5; }
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#f2ede4" />
+  <title>{{ company_name }} — Quick Database Upload</title>
+  <link rel="apple-touch-icon" href="/logo" />
+  <link rel="icon" href="/logo" />
 
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      src: url('/static/fonts/inter-regular.woff2') format('woff2');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Inter';
+      src: url('/static/fonts/inter-medium.woff2') format('woff2');
+      font-weight: 500; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Inter';
+      src: url('/static/fonts/inter-semibold.woff2') format('woff2');
+      font-weight: 600; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Inter';
+      src: url('/static/fonts/inter-bold.woff2') format('woff2');
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #faf7f2;
+      --sur: #f2ede4;
+      --sur2: #e8e2d8;
+      --bdr: #ddd8ce;
+      --bdr2: #cec8bc;
+      --tx: #1c1a16;
+      --tx2: #5a5248;
+      --tx3: #8a8078;
+      --accent: #c96442;
+      --accent-lt: #a84e32;
+      --green: #2d7a4a;
+      --gbg: rgba(45, 122, 74, .08);
+      --yellow: #8a6e1a;
+      --ybg: rgba(138, 110, 26, .08);
+      --red: #a83820;
+      --rbg: rgba(168, 56, 32, .08);
+      --blue: #3a6ea8;
+      --bbg: rgba(58, 110, 168, .08);
+      --r: 10px;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--tx);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* TOP HEADER BAR */
+    .ph {
+      padding: 12px 24px;
+      background: rgba(250, 247, 242, 0.95);
+      border-bottom: 1px solid var(--bdr);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--bdr);
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--tx);
+      letter-spacing: -0.3px;
+    }
+    .header-sub {
+      font-size: 11px;
+      color: var(--tx3);
+    }
+
+    .badge-code {
+      background: var(--sur2);
+      border: 1px solid var(--bdr2);
+      color: var(--tx2);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+
+    /* MAIN CONTAINER */
+    .container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+    }
+
+    .upload-card {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: 14px;
+      padding: 32px;
+      max-width: 520px;
+      width: 100%;
+      box-shadow: 0 4px 20px rgba(28, 26, 22, 0.05);
+      text-align: center;
+    }
+
+    .mill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(201, 100, 66, 0.1);
+      border: 1px solid rgba(201, 100, 66, 0.25);
+      color: var(--accent-lt);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--tx);
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: var(--tx2);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* DROPZONE */
     .dropzone {
-      border: 2px dashed var(--bdr); border-radius: 14px; padding: 36px 20px;
-      background: rgba(15, 23, 42, 0.6); cursor: pointer; transition: all 0.2s ease;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+      border: 2px dashed var(--bdr2);
+      border-radius: var(--r);
+      padding: 36px 20px;
+      background: var(--bg);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
     }
     .dropzone:hover, .dropzone.dragover {
-      border-color: var(--primary); background: rgba(56, 189, 248, 0.05); transform: translateY(-2px);
+      border-color: var(--accent);
+      background: rgba(201, 100, 66, 0.04);
+      transform: translateY(-1px);
     }
     .dz-icon {
-      width: 56px; height: 56px; border-radius: 50%; background: var(--sur2);
-      display: flex; align-items: center; justify-content: center; color: var(--primary);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--sur2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
     }
-    .dz-icon svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .dz-title { font-size: 15px; font-weight: 600; color: var(--tx); }
-    .dz-hint { font-size: 12px; color: var(--tx2); }
+    .dz-icon svg {
+      width: 26px;
+      height: 26px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .dz-title {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--tx);
+    }
+    .dz-hint {
+      font-size: 12px;
+      color: var(--tx3);
+    }
 
     input[type="file"] { display: none; }
 
-    .progress-box { display: none; margin-top: 24px; text-align: left; }
-    .progress-bar-track { background: var(--sur2); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 8px; }
-    .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.15s ease; }
-    .progress-status { display: flex; justify-content: space-between; font-size: 12px; color: var(--tx2); }
+    /* PROGRESS */
+    .progress-box {
+      display: none;
+      margin-top: 24px;
+      text-align: left;
+    }
+    .progress-status {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--tx2);
+      font-weight: 500;
+    }
+    .progress-bar-track {
+      background: var(--sur2);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+      border: 1px solid var(--bdr);
+    }
+    .progress-bar-fill {
+      background: var(--accent);
+      height: 100%;
+      width: 0%;
+      transition: width 0.15s ease;
+    }
 
+    /* ALERTS */
     .alert {
-      display: none; padding: 14px 16px; border-radius: 10px; margin-top: 20px; font-size: 13px; text-align: left;
+      display: none;
+      padding: 14px 16px;
+      border-radius: var(--r);
+      margin-top: 20px;
+      font-size: 13px;
+      text-align: left;
       line-height: 1.4;
     }
-    .alert-success { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); color: #4ade80; }
-    .alert-error { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
-
-    .btn-action {
-      background: var(--primary); color: #090d16; border: none; padding: 12px 24px;
-      border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
-      width: 100%; margin-top: 20px; transition: background 0.15s; display: none;
+    .alert-success {
+      background: var(--gbg);
+      border: 1px solid rgba(45, 122, 74, 0.3);
+      color: var(--green);
     }
-    .btn-action:hover { background: var(--primary-hover); }
+    .alert-error {
+      background: var(--rbg);
+      border: 1px solid rgba(168, 56, 32, 0.3);
+      color: var(--red);
+    }
 
-    .footer-nav { margin-top: 24px; font-size: 12.5px; color: var(--tx2); }
-    .footer-nav a { color: var(--primary); text-decoration: none; font-weight: 600; }
-    .footer-nav a:hover { text-underline-offset: 3px; text-decoration: underline; }
+    /* BUTTONS */
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 20px;
+      transition: background 0.15s;
+      display: none;
+    }
+    .btn-primary:hover {
+      background: var(--accent-lt);
+    }
+
+    .footer-link {
+      margin-top: 24px;
+      font-size: 12.5px;
+      color: var(--tx3);
+    }
+    .footer-link a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .footer-link a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
+
 <body>
 
-  <div class="upload-card">
-    <div class="mill-badge">
-      <span>🌾</span> <span>{{ company_name }}</span> &nbsp;•&nbsp; <code style="color:var(--tx); font-family:monospace;">{{ company_code }}</code>
-    </div>
-
-    <h1 class="card-title">Sync Database to Cloud</h1>
-    <p class="card-sub">Select or drag & drop your mill's Access Database file (<code>.mdb</code>) to sync live orders, stocks, and accounting ledgers.</p>
-
-    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-      <div class="dz-icon">
-        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-      </div>
-      <div class="dz-title" id="dzTitle">Click to Browse or Drag & Drop File</div>
-      <div class="dz-hint" id="dzHint">Supports Access Database <code>.mdb</code> files</div>
-    </div>
-
-    <input type="file" id="fileInput" accept=".mdb" onchange="handleFileSelect(this.files)" />
-
-    <div class="progress-box" id="progressBox">
-      <div class="progress-status">
-        <span id="progressText">Uploading database file…</span>
-        <span id="progressPercent">0%</span>
-      </div>
-      <div class="progress-bar-track">
-        <div class="progress-bar-fill" id="progressBar"></div>
+  <header class="ph">
+    <div class="header-left">
+      <img src="/logo" class="header-logo" alt="Logo" />
+      <div>
+        <div class="header-title">{{ company_name }}</div>
+        <div class="header-sub">Cloud Sync & Audit Engine</div>
       </div>
     </div>
+    <div class="badge-code">{{ company_code }}</div>
+  </header>
 
-    <div class="alert alert-success" id="successAlert"></div>
-    <div class="alert alert-error" id="errorAlert"></div>
+  <div class="container">
+    <div class="upload-card">
+      <div class="mill-tag">
+        <span>🌾</span> <span>{{ company_name }}</span>
+      </div>
 
-    <button class="btn-action" id="btnDashboard" onclick="window.location.href='/'">Open Dashboard Analytics →</button>
+      <h1 class="card-title">Sync Database to Dashboard</h1>
+      <p class="card-sub">Select or drag & drop your Access Database file (<code>.mdb</code>) to sync live orders, stocks, and accounting ledgers.</p>
 
-    <div class="footer-nav">
-      Need to view reports? <a href="/">Open Dashboard</a>
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <div class="dz-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        </div>
+        <div class="dz-title" id="dzTitle">Click to Browse or Drag & Drop File</div>
+        <div class="dz-hint" id="dzHint">Supports Access Database <code>.mdb</code> files</div>
+      </div>
+
+      <input type="file" id="fileInput" accept=".mdb" onchange="handleFileSelect(this.files)" />
+
+      <div class="progress-box" id="progressBox">
+        <div class="progress-status">
+          <span id="progressText">Uploading database file…</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+      </div>
+
+      <div class="alert alert-success" id="successAlert"></div>
+      <div class="alert alert-error" id="errorAlert"></div>
+
+      <button class="btn-primary" id="btnDashboard" onclick="window.location.href='/'">Open Dashboard Analytics →</button>
+
+      <div class="footer-link">
+        Need to view reports? <a href="/">Open Dashboard</a>
+      </div>
     </div>
   </div>
 
