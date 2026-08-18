@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Quick Database Upload — {{ company_name }}</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --sur: #0f172a;
+      --sur2: #1e293b;
+      --bdr: #334155;
+      --tx: #f8fafc;
+      --tx2: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --green: #22c55e;
+      --red: #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--tx); min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px; font-size: 14px;
+    }
+    .upload-card {
+      background: var(--sur); border: 1px solid var(--bdr); border-radius: 16px;
+      padding: 32px; max-width: 520px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      text-align: center; position: relative; overflow: hidden;
+    }
+    .mill-badge {
+      display: inline-flex; align-items: center; gap: 8px; background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3); color: var(--primary); padding: 6px 14px;
+      border-radius: 20px; font-size: 12.5px; font-weight: 600; margin-bottom: 20px;
+    }
+    .card-title { font-size: 22px; font-weight: 700; color: var(--tx); margin-bottom: 8px; }
+    .card-sub { font-size: 13px; color: var(--tx2); margin-bottom: 28px; line-height: 1.5; }
+
+    .dropzone {
+      border: 2px dashed var(--bdr); border-radius: 14px; padding: 36px 20px;
+      background: rgba(15, 23, 42, 0.6); cursor: pointer; transition: all 0.2s ease;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary); background: rgba(56, 189, 248, 0.05); transform: translateY(-2px);
+    }
+    .dz-icon {
+      width: 56px; height: 56px; border-radius: 50%; background: var(--sur2);
+      display: flex; align-items: center; justify-content: center; color: var(--primary);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .dz-icon svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .dz-title { font-size: 15px; font-weight: 600; color: var(--tx); }
+    .dz-hint { font-size: 12px; color: var(--tx2); }
+
+    input[type="file"] { display: none; }
+
+    .progress-box { display: none; margin-top: 24px; text-align: left; }
+    .progress-bar-track { background: var(--sur2); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+    .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.15s ease; }
+    .progress-status { display: flex; justify-content: space-between; font-size: 12px; color: var(--tx2); }
+
+    .alert {
+      display: none; padding: 14px 16px; border-radius: 10px; margin-top: 20px; font-size: 13px; text-align: left;
+      line-height: 1.4;
+    }
+    .alert-success { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); color: #4ade80; }
+    .alert-error { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
+
+    .btn-action {
+      background: var(--primary); color: #090d16; border: none; padding: 12px 24px;
+      border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+      width: 100%; margin-top: 20px; transition: background 0.15s; display: none;
+    }
+    .btn-action:hover { background: var(--primary-hover); }
+
+    .footer-nav { margin-top: 24px; font-size: 12.5px; color: var(--tx2); }
+    .footer-nav a { color: var(--primary); text-decoration: none; font-weight: 600; }
+    .footer-nav a:hover { text-underline-offset: 3px; text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="upload-card">
+    <div class="mill-badge">
+      <span>🌾</span> <span>{{ company_name }}</span> &nbsp;•&nbsp; <code style="color:var(--tx); font-family:monospace;">{{ company_code }}</code>
+    </div>
+
+    <h1 class="card-title">Sync Database to Cloud</h1>
+    <p class="card-sub">Select or drag & drop your mill's Access Database file (<code>.mdb</code>) to sync live orders, stocks, and accounting ledgers.</p>
+
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <div class="dz-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      </div>
+      <div class="dz-title" id="dzTitle">Click to Browse or Drag & Drop File</div>
+      <div class="dz-hint" id="dzHint">Supports Access Database <code>.mdb</code> files</div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".mdb" onchange="handleFileSelect(this.files)" />
+
+    <div class="progress-box" id="progressBox">
+      <div class="progress-status">
+        <span id="progressText">Uploading database file…</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+    </div>
+
+    <div class="alert alert-success" id="successAlert"></div>
+    <div class="alert alert-error" id="errorAlert"></div>
+
+    <button class="btn-action" id="btnDashboard" onclick="window.location.href='/'">Open Dashboard Analytics →</button>
+
+    <div class="footer-nav">
+      Need to view reports? <a href="/">Open Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    const companyCode = "{{ company_code }}";
+    const secretToken = "{{ secret_token }}";
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    ['dragenter', 'dragover'].forEach(evt => {
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(evt => {
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+      });
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        handleFileSelect(files);
+      }
+    });
+
+    function handleFileSelect(files) {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+
+      if (!file.name.toLowerCase().endsWith('.mdb')) {
+        showError('Please select a valid Microsoft Access Database file (.mdb)');
+        return;
+      }
+
+      document.getElementById('dzTitle').innerText = file.name;
+      document.getElementById('dzHint').innerText = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+
+      uploadFile(file);
+    }
+
+    function uploadFile(file) {
+      const progressBox = document.getElementById('progressBox');
+      const progressBar = document.getElementById('progressBar');
+      const progressPercent = document.getElementById('progressPercent');
+      const progressText = document.getElementById('progressText');
+      const successAlert = document.getElementById('successAlert');
+      const errorAlert = document.getElementById('errorAlert');
+
+      progressBox.style.display = 'block';
+      successAlert.style.display = 'none';
+      errorAlert.style.display = 'none';
+      progressBar.style.width = '0%';
+      progressPercent.innerText = '0%';
+      progressText.innerText = 'Uploading database file…';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const xhr = new XMLHttpRequest();
+      const endpoint = `/api/upload-database?code=${encodeURIComponent(companyCode)}&token=${encodeURIComponent(secretToken)}`;
+
+      xhr.open('POST', endpoint, true);
+      xhr.setRequestHeader('X-Company-Code', companyCode);
+      xhr.setRequestHeader('X-Sync-Token', secretToken);
+
+      xhr.upload.onprogress = function (e) {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = percent + '%';
+          progressPercent.innerText = percent + '%';
+        }
+      };
+
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            if (resp.status === 'ok') {
+              showSuccess(`✓ Database file '<strong>${file.name}</strong>' uploaded successfully! Reports and Audit Log have been updated.`);
+              document.getElementById('btnDashboard').style.display = 'block';
+            } else {
+              showError(resp.message || 'Upload failed');
+            }
+          } catch (err) {
+            showSuccess(`✓ Database uploaded successfully!`);
+            document.getElementById('btnDashboard').style.display = 'block';
+          }
+        } else {
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            showError(resp.message || `Upload failed with status code ${xhr.status}`);
+          } catch (err) {
+            showError(`Upload failed with status code ${xhr.status}`);
+          }
+        }
+      };
+
+      xhr.onerror = function () {
+        showError('Network connection error during upload. Please try again.');
+      };
+
+      xhr.send(formData);
+    }
+
+    function showSuccess(msg) {
+      const el = document.getElementById('successAlert');
+      el.innerHTML = msg;
+      el.style.display = 'block';
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('errorAlert');
+      el.innerHTML = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

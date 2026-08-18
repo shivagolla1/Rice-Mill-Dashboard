@@ -1628,12 +1628,55 @@ def api_change_password():
     return jsonify({'status': 'error', 'message': msg}), 400
 
 # ── DIRECT WEB UI File UPLOAD ENDPOINT (Zero Desktop Software Required) ────
+@app.route('/quick-upload')
+def quick_upload_page():
+    company_code = request.args.get('code', '').strip()
+    secret_token = request.args.get('token', '').strip()
+
+    tenant = None
+    if company_code and secret_token:
+        t = tenants.get_tenant_by_code(company_code)
+        if t and (t.get('secret_token') == secret_token or t.get('license_key') == secret_token):
+            tenant = t
+
+    if not tenant and 'user' in session and isinstance(session['user'], dict):
+        tenant = tenants.get_tenant_by_id(session['user'].get('tenant_id'))
+
+    if not tenant:
+        # Check single-tenant default
+        tenant = tenants.get_tenant_by_id('client_default')
+        if not tenant:
+            return "<div style='font-family:sans-serif; text-align:center; margin-top:50px; color:#ef4444;'><h2>401 Security Authorization Failed</h2><p>Invalid or missing Company Code & Secret Token parameters in URL.</p></div>", 401
+
+    return render_template(
+        'upload.html',
+        company_name=tenant.get('company_name', 'Rice Mill'),
+        company_code=tenant.get('company_code', 'DEMO'),
+        secret_token=tenant.get('secret_token', '')
+    )
+
 @app.route('/api/upload-database', methods=['POST'])
 def api_upload_database():
-    if 'user' not in session or not isinstance(session['user'], dict):
-        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+    company_code = request.args.get('code') or request.form.get('code') or request.headers.get('X-Company-Code', '').strip()
+    secret_token = request.args.get('token') or request.form.get('token') or request.headers.get('X-Sync-Token') or request.headers.get('X-License-Key', '').strip()
 
-    tenant_id = session['user'].get('tenant_id', 'client_default')
+    tenant = None
+    if company_code and secret_token:
+        t = tenants.get_tenant_by_code(company_code)
+        if t and (t.get('secret_token') == secret_token or t.get('license_key') == secret_token):
+            tenant = t
+
+    if not tenant and 'user' in session and isinstance(session['user'], dict):
+        tenant = tenants.get_tenant_by_id(session['user'].get('tenant_id'))
+
+    if not tenant and company_code == '' and secret_token == '':
+        tenant = tenants.get_tenant_by_id('client_default')
+
+    if not tenant:
+        return jsonify({'status': 'error', 'message': 'Authentication required or invalid Company Code & Secret Token'}), 401
+
+    tenant_id = tenant.get('tenant_id', 'client_default')
+
     if 'file' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
 
@@ -1642,7 +1685,6 @@ def api_upload_database():
     if not raw_bytes:
         return jsonify({'status': 'error', 'message': 'Uploaded file is empty'}), 400
 
-    tenant = tenants.get_tenant_by_id(tenant_id)
     enc_key = tenant.get('encryption_key', '') if tenant else ''
 
     # Attempt decrypt if encrypted via Web Crypto API
@@ -1663,18 +1705,31 @@ def api_upload_database():
     with open(target_mdb, 'wb') as out_f:
         out_f.write(mdb_bytes)
 
+    if tenant_id == 'client_default':
+        global MDB_PATH
+        MDB_PATH = target_mdb
+
     # Invalidate cache for this tenant
     with _tenant_cache_lock:
         if tenant_id in _tenant_caches:
             _tenant_caches[tenant_id]["mtime"] = None
             _tenant_caches[tenant_id]["tables"].clear()
 
+    # Trigger AuditEngine snapshot diffing
+    try:
+        tx_data = get_transactions('all')
+        if isinstance(tx_data, list):
+            audit_engine.AuditEngine.process_upload(tenant_id, tx_data)
+    except Exception as audit_err:
+        print("AuditEngine process_upload error:", audit_err)
+
     return jsonify({
         'status': 'ok',
-        'message': 'File updated successfully! Reports will now reflect the new data.',
+        'message': f"File updated successfully for {tenant.get('company_name', 'Rice Mill')}! Reports will now reflect the new data.",
         'filename': f.filename,
         'size_bytes': len(mdb_bytes)
     })
+
 
 @app.route('/api/delete-database', methods=['POST'])
 def api_delete_database():
@@ -1803,13 +1858,55 @@ def api_super_admin_download_uploader(license_key):
 
     company_code = tenant.get('company_code', 'MILL')
     company_name = tenant.get('company_name', 'Rice Mill')
+    secret_token = tenant.get('secret_token', license_key)
+    cloud_url = request.host_url.rstrip('/')
 
-    config_content = f"""# Rice Mill Dashboard — 2-Click Desktop Sync Configuration
-CLOUD_URL=https://ricemilldashboard.up.railway.app
+    config_content = f"""# Rice Mill Dashboard — Client Sync Configuration
+CLOUD_URL={cloud_url}
 LICENSE_KEY={license_key}
 COMPANY_CODE={company_code}
+SYNC_SECRET_TOKEN={secret_token}
 """
 
+    shortcut_bat_content = """@echo off
+title Rice Mill Dashboard - Desktop Shortcut Creator
+setlocal enabledelayedexpansion
+
+set "SCRIPT_DIR=%~dp0"
+set "CONFIG_FILE=%SCRIPT_DIR%sync_config.txt"
+
+set "CLOUD_URL=https://ricemilldashboard.up.railway.app"
+set "COMPANY_CODE=DEMO"
+set "SYNC_SECRET_TOKEN=RiceMillSyncSecretToken2026!"
+
+if exist "%CONFIG_FILE%" (
+    for /f "usebackq tokens=1,2 delims==" %%a in ("%CONFIG_FILE%") do (
+        set "k=%%a"
+        set "v=%%b"
+        if "!k!"=="CLOUD_URL" set "CLOUD_URL=!v!"
+        if "!k!"=="COMPANY_CODE" set "COMPANY_CODE=!v!"
+        if "!k!"=="SYNC_SECRET_TOKEN" set "SYNC_SECRET_TOKEN=!v!"
+        if "!k!"=="LICENSE_KEY" if "!SYNC_SECRET_TOKEN!"=="" set "SYNC_SECRET_TOKEN=!v!"
+    )
+)
+
+set "TARGET_URL=%CLOUD_URL%/quick-upload?code=%COMPANY_CODE%&token=%SYNC_SECRET_TOKEN%"
+
+powershell -ExecutionPolicy Bypass -NoProfile -Command "$desktop=[Environment]::GetFolderPath('Desktop'); $lnk=Join-Path $desktop 'Upload Database to Cloud.url'; $writer=[System.IO.File]::CreateText($lnk); $writer.WriteLine('[InternetShortcut]'); $writer.WriteLine('URL=%TARGET_URL%'); $writer.WriteLine('IconIndex=0'); $writer.Close()"
+
+echo.
+echo ====================================================
+echo  [SUCCESS] Desktop Shortcut Created!
+echo ====================================================
+echo.
+echo  Shortcut Name: Upload Database to Cloud.url
+echo  Target URL:   %TARGET_URL%
+echo.
+echo  Double-click "Upload Database to Cloud" on your
+echo  Desktop anytime to sync your database.
+echo.
+pause
+"""
 
     search_dirs = [os.path.dirname(EXE_DIR), EXE_DIR, os.getcwd(), os.path.dirname(os.path.abspath(__file__))]
 
@@ -1825,24 +1922,6 @@ COMPANY_CODE={company_code}
                         return f.read()
         return None
 
-    shortcut_bat_content = """@echo off
-set "SCRIPT_DIR=%~dp0"
-set "TARGET=%SCRIPT_DIR%sync_now.bat"
-
-powershell -ExecutionPolicy Bypass -NoProfile -Command "$desktop=[Environment]::GetFolderPath('Desktop'); $lnk=Join-Path $desktop 'Sync Database to Cloud.lnk'; $s=(New-Object -COM WScript.Shell).CreateShortcut($lnk); $s.TargetPath='%TARGET%'; $s.WorkingDirectory='%SCRIPT_DIR%'; $s.Save()"
-
-echo.
-echo ====================================================
-echo  [SUCCESS] Desktop Shortcut Created!
-echo ====================================================
-echo.
-echo  You can now double-click "Sync Database to Cloud"
-echo  directly from your Windows Desktop.
-echo.
-pause
-"""
-
-
     bat_code = read_file_content('sync_now.bat')
     ps1_code = read_file_content('sync_uploader.ps1')
 
@@ -1855,9 +1934,6 @@ pause
         if bat_code:
             zf.writestr('sync_now.bat', bat_code)
 
-
-
-
     zip_buffer.seek(0)
     safe_filename = f"{company_code}_2Click_Uploader.zip"
 
@@ -1866,6 +1942,7 @@ pause
         mimetype='application/zip',
         headers={'Content-Disposition': f'attachment; filename={safe_filename}'}
     )
+
 
 
 
