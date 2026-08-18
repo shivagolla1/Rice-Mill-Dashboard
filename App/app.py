@@ -2143,12 +2143,13 @@ def api_mill_staff_reset_password():
 
 @app.before_request
 def restrict_unlicensed():
-    # Always allow static files, setup, license, login, SaaS endpoints, and sync endpoints
-    allowed_paths = ('/static/', '/manifest.json', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/api/sync-database', '/super-admin', '/api/super-admin', '/api/forgot-password', '/api/upload-database', '/api/delete-database')
+    # Always allow static files, setup, license, login, quick upload, SaaS endpoints, and sync endpoints
+    allowed_paths = ('/static/', '/manifest.json', '/api/license/activate', '/license', '/setup', '/api/setup', '/logo', '/login', '/logout', '/quick-upload', '/api/sync-database', '/super-admin', '/api/super-admin', '/api/forgot-password', '/api/upload-database', '/api/delete-database')
 
 
     if any(request.path.startswith(p) for p in allowed_paths) or request.path in allowed_paths:
         return
+
 
     
     # Check if first run (redirect to setup, which is allowed)
