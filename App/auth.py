@@ -78,7 +78,7 @@ def authenticate_user(company_code, username, password):
 
     tenant = get_tenant_by_code(company_code)
     if not tenant:
-        return None, f"Company Code '{company_code.strip().upper()}' not found!"
+        return None, f"Company Code '{company_code.strip().upper()}' not found."
 
     # Check Tenant Subscription Expiry & Status
     status = tenant.get('status', 'ACTIVE').upper()
@@ -94,20 +94,29 @@ def authenticate_user(company_code, username, password):
         except Exception:
             pass
 
-    tenant_id = tenant.get('tenant_id')
+    tenant_id = tenant.get('tenant_id', 'client_default')
     users = load_tenant_users(tenant_id)
     username_clean = username.strip().lower()
 
-    if username_clean in users:
-        u = users[username_clean]
-        if verify_password(password, u['password_hash']):
-            user_data = dict(u)
+    # Case-insensitive username lookup
+    matched_user = None
+    for u_key, u_val in users.items():
+        if u_key.strip().lower() == username_clean or u_val.get('username', '').strip().lower() == username_clean:
+            matched_user = u_val
+            break
+
+    if matched_user:
+        if verify_password(password, matched_user['password_hash']):
+            user_data = dict(matched_user)
             user_data['tenant_id'] = tenant_id
             user_data['company_code'] = tenant.get('company_code')
             user_data['company_name'] = tenant.get('company_name')
             return user_data, None
+        else:
+            return None, "Incorrect password."
 
-    return None, "Invalid username or password for this company code."
+    return None, f"No user account '{username.strip()}' found under Company Code '{company_code.strip().upper()}'."
+
 
 def change_user_password(tenant_id, username, old_password, new_password):
     users = load_tenant_users(tenant_id)

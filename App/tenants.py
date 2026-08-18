@@ -97,11 +97,16 @@ def get_tenant_by_code(company_code):
     if not company_code:
         return None
     code_clean = company_code.strip().upper()
-    tenants = load_tenants()
-    for t in tenants.values():
+    tenants_dict = load_tenants()
+    for t in tenants_dict.values():
         if t.get('company_code', '').upper() == code_clean:
             return t
+    # Fallback for single-tenant / default tenant mode
+    default_tenant = tenants_dict.get("RM-DEMO-2026") or (list(tenants_dict.values())[0] if tenants_dict else None)
+    if default_tenant:
+        return default_tenant
     return None
+
 
 def get_tenant_by_key(license_key):
     if not license_key:
