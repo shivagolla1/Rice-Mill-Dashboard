@@ -2154,6 +2154,204 @@
       display: none;
     }
 
+    .mobile-drawer-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 9998;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .mobile-drawer-backdrop.show {
+      display: block;
+      opacity: 1;
+    }
+
+    .mobile-filter-drawer {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 320px;
+      max-width: 85vw;
+      background: var(--sur);
+      border-left: 1px solid var(--bdr);
+      z-index: 9999;
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .mobile-filter-drawer.open {
+      transform: translateX(0);
+    }
+
+    .m-drawer-hdr {
+      padding: 16px;
+      border-bottom: 1px solid var(--bdr);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--sur2);
+    }
+
+    .m-drawer-body {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .m-fg {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .m-fl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--tx3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .m-inp {
+      background: var(--sur2);
+      border: 1px solid var(--bdr2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--tx);
+      font-family: var(--font);
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .m-inp:focus {
+      border-color: var(--accent);
+    }
+
+    .m-drawer-ftr {
+      padding: 14px 16px;
+      border-top: 1px solid var(--bdr);
+      display: flex;
+      gap: 10px;
+      background: var(--sur2);
+    }
+
+    .m-btn-apply {
+      flex: 1;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .m-btn-rst {
+      background: transparent;
+      border: 1px solid var(--bdr2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--tx2);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* MOBILE CARDS */
+    .m-card {
+      background: var(--sur);
+      border: 1px solid var(--bdr);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .m-card:active {
+      transform: scale(0.98);
+      border-color: var(--accent);
+    }
+
+    .m-card-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .m-card-thumb {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-lt);
+      background: rgba(201, 100, 66, 0.12);
+      padding: 3px 10px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .m-card-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .st-paid { background: var(--gbg); color: var(--green); }
+    .st-pending { background: var(--ybg); color: var(--yellow); }
+    .st-late { background: var(--rbg); color: var(--red); }
+
+    .m-card-party {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--tx);
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .m-card-sub {
+      font-size: 12px;
+      color: var(--tx2);
+      margin-bottom: 10px;
+    }
+
+    .m-card-ftr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px dashed var(--bdr2);
+    }
+
+    .m-card-bill {
+      font-size: 12px;
+      color: var(--tx3);
+      font-family: var(--mono);
+    }
+
+    .m-card-amt {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--tx);
+      font-family: var(--mono);
+    }
+
     @media (max-width: 768px) {
       nav.sb {
         display: none !important;
@@ -2165,17 +2363,26 @@
       }
 
       .ph {
-        padding: 10px 14px !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 8px !important;
+        padding: 12px 14px !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+      }
+
+      .ph-logo-mobile {
+        display: block !important;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        object-fit: cover;
+      }
+
+      .badge-code, .btn-print, .btn-export, .btn-upload, #btn-change-db {
+        display: none !important;
       }
 
       .hdr-actions {
-        width: 100% !important;
-        justify-content: flex-start !important;
-        flex-wrap: wrap !important;
-        gap: 6px !important;
+        display: none !important;
       }
 
       .cards {
@@ -2197,10 +2404,26 @@
       }
 
       .fbar {
-        padding: 8px 10px !important;
-        gap: 6px !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
+        display: none !important;
+      }
+
+      .btn-mobile-filter {
+        display: flex !important;
+        align-items: center;
+        gap: 6px;
+        position: fixed;
+        bottom: 74px;
+        right: 16px;
+        z-index: 899;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 30px;
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 6px 20px rgba(201, 100, 66, 0.4);
+        cursor: pointer;
       }
 
       .tw {
@@ -2265,6 +2488,7 @@
         line-height: 1;
       }
     }
+
 
   </style>
 
@@ -4713,10 +4937,10 @@
     }
   </script>
 
-  <!-- Fixed App-Style Bottom Navigation Bar for Mobile (< 768px) -->
+  <!-- Mobile Bottom Navigation Bar (Sales, Purchases, Journal, Logout) -->
   <nav class="mobile-bottom-nav">
     <div class="mobile-nav-item active" data-page="orders" onclick="switchMobilePage('orders')">
-      <span class="mobile-nav-icon">📊</span>
+      <span class="mobile-nav-icon">📈</span>
       <span>Sales</span>
     </div>
     <div class="mobile-nav-item" data-page="purchases" onclick="switchMobilePage('purchases')">
@@ -4979,23 +5203,96 @@
       }
     }
 
-    async function promptResetStaffPassword(username) {
-      const newPass = prompt(`Enter new password for staff user '${username}':`);
-      if (!newPass) return;
-      try {
-        const resp = await fetch('/api/mill-staff/reset-password', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ username, new_password: newPass })
-        });
-        const res = await resp.json();
-        alert(res.message || 'Password updated');
-      } catch (err) {
-        alert('Network error resetting password');
+    /* ═══════════════════════════════════════════════════════════ MOBILE FILTER DRAWER & CARDS */
+    function openMobileFilterDrawer() {
+      const drawer = document.getElementById('mobileFilterDrawer');
+      const backdrop = document.getElementById('mobileDrawerBackdrop');
+      if (drawer) drawer.classList.add('open');
+      if (backdrop) backdrop.classList.add('show');
+    }
+
+    function closeMobileFilterDrawer() {
+      const drawer = document.getElementById('mobileFilterDrawer');
+      const backdrop = document.getElementById('mobileDrawerBackdrop');
+      if (drawer) drawer.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('show');
+    }
+
+    function applyMobileFilters() {
+      const searchVal = document.getElementById('m-search-input')?.value || '';
+      const fromDate = document.getElementById('m-from-date')?.value || '';
+      const toDate = document.getElementById('m-to-date')?.value || '';
+
+      // Sync to desktop inputs if present
+      const dtSrch = document.getElementById('srch');
+      if (dtSrch) dtSrch.value = searchVal;
+
+      const dtFrom = document.getElementById('date-from');
+      if (dtFrom && fromDate) dtFrom.value = fromDate;
+
+      const dtTo = document.getElementById('date-to');
+      if (dtTo && toDate) dtTo.value = toDate;
+
+      // Trigger table refresh
+      if (typeof applyFilters === 'function') applyFilters();
+
+      closeMobileFilterDrawer();
+    }
+
+    function resetMobileFilters() {
+      if (document.getElementById('m-search-input')) document.getElementById('m-search-input').value = '';
+      if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = '';
+      if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = '';
+
+      if (typeof resetFilters === 'function') resetFilters();
+      closeMobileFilterDrawer();
+    }
+
+    function renderMobileCardList(items, containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      if (!items || items.length === 0) {
+        container.innerHTML = `<div class="no-match">No records found</div>`;
+        return;
       }
+
+      let html = '';
+      items.forEach(item => {
+        const variety = item.variety || item.item_name || 'Rice Variety';
+        const party = item.party_name || item.credit_account || '—';
+        const bags = item.bags || item.quantity || '0';
+        const qtl = item.quintal || item.qtl || '0';
+        const date = item.loaded_date || item.date || '—';
+        const bill = item.bill_no || item.r_no || '—';
+        const amount = item.net_amount || item.amount || '0';
+        const status = (item.payment_status || 'PAID').toUpperCase();
+        const statusClass = status.includes('PEND') ? 'st-pending' : (status.includes('LATE') ? 'st-late' : 'st-paid');
+
+        html += `
+          <div class="m-card" onclick="showMobileItemDetail('${bill}', '${party}')">
+            <div class="m-card-hdr">
+              <span class="m-card-thumb">🌾 ${variety}</span>
+              <span class="m-card-badge ${statusClass}">${status}</span>
+            </div>
+            <div class="m-card-party">${party}</div>
+            <div class="m-card-sub">📦 ${bags} Bags (${qtl} Qtl)  •  📅 ${date}</div>
+            <div class="m-card-ftr">
+              <span class="m-card-bill">#${bill}</span>
+              <span class="m-card-amt">₹${Number(amount).toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function showMobileItemDetail(bill, party) {
+      alert(`Bill No: ${bill}\nParty: ${party}`);
     }
 
   </script>
+
 </body>
 
 
