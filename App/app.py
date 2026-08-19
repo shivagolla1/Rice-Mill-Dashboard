@@ -406,18 +406,20 @@ def read_table(tname):
 
 
 # ── ORDERS (IO + IO Details + Confirmation + Journal summary) ─────────────────
-def get_transactions(mode_filter):
-    mdb_path = get_current_tenant_mdb_path()
-    if not os.path.exists(mdb_path):
+def get_transactions(mode_filter, tenant_id=None):
+    if not tenant_id:
+        tenant_id = get_current_tenant_id()
+    mdb_path = get_current_tenant_mdb_path(tenant_id)
+    if not mdb_path or not os.path.exists(mdb_path):
         return []
-
 
     try:
         # Use cached tables — parsed once on startup, instant on subsequent calls
-        io_cols,  _, io_rows   = get_cached_table('IO')
-        det_cols, _, det_rows  = get_cached_table('IO Details')
-        con_cols, _, con_rows  = get_cached_table('Confirmation')
-        oth_cols, _, oth_rows  = get_cached_table('IO Other Details')
+        io_cols,  _, io_rows   = get_cached_table('IO', tenant_id=tenant_id)
+        det_cols, _, det_rows  = get_cached_table('IO Details', tenant_id=tenant_id)
+        con_cols, _, con_rows  = get_cached_table('Confirmation', tenant_id=tenant_id)
+        oth_cols, _, oth_rows  = get_cached_table('IO Other Details', tenant_id=tenant_id)
+
 
         if not io_cols:
             return {'error': 'IO table not found'}

@@ -2294,15 +2294,11 @@
     }
 
     .m-card-thumb {
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 700;
-      color: var(--accent-lt);
-      background: rgba(201, 100, 66, 0.12);
-      padding: 3px 10px;
-      border-radius: 20px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+      color: var(--tx);
+      display: inline-block;
+      letter-spacing: -0.2px;
     }
 
     .m-card-badge {
@@ -2318,16 +2314,16 @@
     .st-late { background: var(--rbg); color: var(--red); }
 
     .m-card-party {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--tx);
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--tx2);
       margin-bottom: 6px;
       line-height: 1.3;
     }
 
     .m-card-sub {
       font-size: 12px;
-      color: var(--tx2);
+      color: var(--tx3);
       margin-bottom: 10px;
     }
 
@@ -2346,18 +2342,18 @@
     }
 
     .m-card-amt {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       color: var(--tx);
       font-family: var(--mono);
     }
 
-    .mobile-header-brand {
-      display: none;
-    }
-
     @media (max-width: 768px) {
       nav.sb {
+        display: none !important;
+      }
+
+      .sb-db, #btn-change-db, .btn-upload, #btn-manage-staff, #btn-mill-logo, .badge-code, .btn-print, .btn-export {
         display: none !important;
       }
 
@@ -2397,13 +2393,10 @@
         display: none !important;
       }
 
-      .badge-code, .btn-print, .btn-export, .btn-upload, #btn-change-db {
-        display: none !important;
-      }
-
       .hdr-actions {
         display: none !important;
       }
+
 
       .cards {
         grid-template-columns: repeat(2, 1fr) !important;
@@ -4970,7 +4963,7 @@
     }
   </script>
 
-  <!-- Mobile Bottom Navigation Bar (Sales, Purchases, Journal, Logout) -->
+  <!-- Mobile Bottom Navigation Bar (Sales, Purchases, Journal, Filters, Logout) -->
   <nav class="mobile-bottom-nav">
     <div class="mobile-nav-item active" data-page="orders" onclick="switchMobilePage('orders')">
       <span class="mobile-nav-icon">📈</span>
@@ -4984,24 +4977,60 @@
       <span class="mobile-nav-icon">📖</span>
       <span>Journal</span>
     </div>
-    {% if show_stocks %}
-    <div class="mobile-nav-item" data-page="stocks" onclick="switchMobilePage('stocks')">
-      <span class="mobile-nav-icon">📦</span>
-      <span>Stocks</span>
+    <div class="mobile-nav-item" onclick="openMobileFilterDrawer()">
+      <span class="mobile-nav-icon">🔍</span>
+      <span>Filters</span>
     </div>
-    {% endif %}
-    {% if user and (user.role == 'admin' or session.get('is_super_admin')) %}
-    <div class="mobile-nav-item" onclick="openMillLogoModal()">
-      <span class="mobile-nav-icon">📷</span>
-      <span>Logo</span>
-    </div>
-    {% endif %}
-
-    <div class="mobile-nav-item" onclick="openWebUploadModal()">
-      <span class="mobile-nav-icon">📁</span>
-      <span>Upload</span>
-    </div>
+    <a href="/logout" class="mobile-nav-item" style="color:var(--red) !important; text-decoration:none;">
+      <span class="mobile-nav-icon">🚪</span>
+      <span>Logout</span>
+    </a>
   </nav>
+
+  <!-- Mobile Filter Drawer & Backdrop -->
+  <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" onclick="closeMobileFilterDrawer()"></div>
+  <div class="mobile-filter-drawer" id="mobileFilterDrawer">
+    <div class="m-drawer-hdr">
+      <div style="font-weight:700; font-size:15px; color:var(--tx); display:flex; align-items:center; gap:8px;">
+        <span>🔍</span> <span>Filter Transactions</span>
+      </div>
+      <button onclick="closeMobileFilterDrawer()" style="background:none; border:none; color:var(--tx3); font-size:20px; cursor:pointer; padding:4px;">✕</button>
+    </div>
+    <div class="m-drawer-body">
+      <div class="m-fg">
+        <label class="m-fl">Search Keyword</label>
+        <input type="text" id="m-search-input" class="m-inp" placeholder="Party name, bill #, variety..." />
+      </div>
+      <div class="m-fg">
+        <label class="m-fl">From Date</label>
+        <input type="date" id="m-from-date" class="m-inp" />
+      </div>
+      <div class="m-fg">
+        <label class="m-fl">To Date</label>
+        <input type="date" id="m-to-date" class="m-inp" />
+      </div>
+    </div>
+    <div class="m-drawer-ftr">
+      <button class="m-btn-rst" onclick="resetMobileFilters()">Reset All</button>
+      <button class="m-btn-apply" onclick="applyMobileFilters()">Apply Filters</button>
+    </div>
+  </div>
+
+  <!-- Mobile Detail Modal & Backdrop -->
+  <div class="mobile-drawer-backdrop" id="mobileDetailBackdrop" onclick="closeMobileDetailModal()"></div>
+  <div class="mobile-filter-drawer" id="mobileDetailModal" style="width:340px;">
+    <div class="m-drawer-hdr">
+      <div style="font-weight:700; font-size:15px; color:var(--tx); display:flex; align-items:center; gap:8px;">
+        <span>📄</span> <span id="m-det-title">Transaction Details</span>
+      </div>
+      <button onclick="closeMobileDetailModal()" style="background:none; border:none; color:var(--tx3); font-size:20px; cursor:pointer; padding:4px;">✕</button>
+    </div>
+    <div class="m-drawer-body" id="m-det-body"></div>
+    <div class="m-drawer-ftr">
+      <button class="m-btn-apply" onclick="closeMobileDetailModal()">Close Details</button>
+    </div>
+  </div>
+
 
   <script>
     function switchMobilePage(pageId) {
@@ -5281,6 +5310,8 @@
       closeMobileFilterDrawer();
     }
 
+    let _mobileCardsStore = {};
+
     function renderMobileCardList(items, containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -5289,8 +5320,10 @@
         return;
       }
 
+      _mobileCardsStore[containerId] = items;
+
       let html = '';
-      items.forEach(item => {
+      items.forEach((item, i) => {
         const variety = item.variety || (item.details && item.details[0] && item.details[0].variety) || 'Rice Variety';
         const party = item.party_name || item.party || item.credit_account || '—';
         const bags = item.bags || item.quantity || '0';
@@ -5310,9 +5343,9 @@
         const formattedAmt = numAmt.toLocaleString('en-IN');
 
         html += `
-          <div class="m-card" onclick="showMobileItemDetail('${esc(bill)}', '${esc(party)}', '${esc(variety)}', '${fmtN(bags)}', '${fmt(qtl)}', '${formattedAmt}', '${status}')">
+          <div class="m-card" onclick="showMobileCardDetail('${containerId}', ${i})">
             <div class="m-card-hdr">
-              <span class="m-card-thumb">🌾 ${esc(variety)}</span>
+              <span class="m-card-thumb">${esc(variety)}</span>
               <span class="m-card-badge ${statusClass}">${status}</span>
             </div>
             <div class="m-card-party">${esc(party)}</div>
@@ -5328,9 +5361,105 @@
       container.innerHTML = html;
     }
 
-    function showMobileItemDetail(bill, party, variety, bags, qtl, amount, status) {
-      alert(`📄 Bill #${bill}\n👤 Party: ${party}\n🌾 Variety: ${variety}\n📦 Bags: ${bags} (${qtl} Qtl)\n💰 Amount: ₹${amount}\n📌 Status: ${status}`);
+    function showMobileCardDetail(containerId, index) {
+      const item = _mobileCardsStore[containerId]?.[index];
+      if (!item) return;
+
+      const backdrop = document.getElementById('mobileDetailBackdrop');
+      const modal = document.getElementById('mobileDetailModal');
+      const title = document.getElementById('m-det-title');
+      const body = document.getElementById('m-det-body');
+      if (!modal || !body) return;
+
+      const bill = item.bill_no || item.io_id || item.r_no || '—';
+      const party = item.party_name || item.party || item.credit_account || '—';
+      const broker = item.broker || item.broker_name || 'Direct';
+      const variety = item.variety || (item.details && item.details[0] && item.details[0].variety) || '—';
+      const bags = item.bags || item.quantity || '0';
+      const qtl = item.qtl || item.quintal || '0';
+      const rate = item.rate || (item.details && item.details[0] && item.details[0].rate) || '0';
+      const amount = item.amount || item.net_amount || 0;
+      const date = item.loaded_date || item.date || '—';
+      const mode = item.mode || '—';
+      const cd = item.cd || '—';
+
+      const numAmt = parseFloat(String(amount).replace(/[^\d.]/g, '')) || 0;
+      const numRate = parseFloat(String(rate).replace(/[^\d.]/g, '')) || 0;
+
+      if (title) title.innerText = `Bill #${bill}`;
+
+      let paymentsHtml = '';
+      if (item.payments && item.payments.length > 0) {
+        paymentsHtml = `
+          <div style="margin-top:10px;">
+            <div class="m-fl" style="margin-bottom:6px;">Payment Entries (${item.payments.length})</div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${item.payments.map((p, idx) => `
+                <div style="background:var(--sur2); border:1px solid var(--bdr); border-radius:6px; padding:6px 10px; font-size:12px; display:flex; justify-space-between;">
+                  <span>#${idx + 1} ${p.pay_date || '—'}</span>
+                  <strong style="color:var(--green);">₹${Number(p.amount || 0).toLocaleString('en-IN')}</strong>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      body.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
+          <div style="background:var(--sur2); padding:10px 12px; border-radius:8px; border:1px solid var(--bdr);">
+            <div style="font-size:10px; color:var(--tx3); text-transform:uppercase; font-weight:600;">Party Account</div>
+            <div style="font-size:15px; font-weight:700; color:var(--tx); margin-top:2px;">${esc(party)}</div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div style="background:var(--sur2); padding:8px 10px; border-radius:6px; border:1px solid var(--bdr);">
+              <div style="font-size:10px; color:var(--tx3); text-transform:uppercase; font-weight:600;">Broker Name</div>
+              <div style="font-weight:600; color:var(--tx); font-size:12.5px;">${esc(broker)}</div>
+            </div>
+            <div style="background:var(--sur2); padding:8px 10px; border-radius:6px; border:1px solid var(--bdr);">
+              <div style="font-size:10px; color:var(--tx3); text-transform:uppercase; font-weight:600;">Loaded Date</div>
+              <div style="font-weight:600; color:var(--tx); font-size:12.5px;">${esc(date)}</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div style="background:var(--sur2); padding:8px 10px; border-radius:6px; border:1px solid var(--bdr);">
+              <div style="font-size:10px; color:var(--tx3); text-transform:uppercase; font-weight:600;">Variety / Item</div>
+              <div style="font-weight:600; color:var(--accent-lt); font-size:12.5px;">${esc(variety)}</div>
+            </div>
+            <div style="background:var(--sur2); padding:8px 10px; border-radius:6px; border:1px solid var(--bdr);">
+              <div style="font-size:10px; color:var(--tx3); text-transform:uppercase; font-weight:600;">Rate per Qtl/Bag</div>
+              <div style="font-weight:700; color:var(--tx); font-size:13px; font-family:var(--mono);">₹${numRate.toLocaleString('en-IN')}</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div style="background:var(--sur2); padding:8px 10px; border-radius:6px; border:1px solid var(--bdr);">
+              <div style="font-size:10px; color:var(--tx3); text-transform:uppercase; font-weight:600;">Quantity</div>
+              <div style="font-weight:600; color:var(--tx); font-size:12.5px;">${fmtN(bags)} Bags (${fmt(qtl)} Qtl)</div>
+            </div>
+            <div style="background:var(--sur2); padding:8px 10px; border-radius:6px; border:1px solid var(--bdr);">
+              <div style="font-size:10px; color:var(--tx3); text-transform:uppercase; font-weight:600;">Net Amount</div>
+              <div style="font-weight:700; color:var(--tx); font-size:13.5px; font-family:var(--mono);">₹${numAmt.toLocaleString('en-IN')}</div>
+            </div>
+          </div>
+
+          ${paymentsHtml}
+        </div>
+      `;
+
+      if (modal) modal.classList.add('open');
+      if (backdrop) backdrop.classList.add('show');
     }
+
+    function closeMobileDetailModal() {
+      const backdrop = document.getElementById('mobileDetailBackdrop');
+      const modal = document.getElementById('mobileDetailModal');
+      if (modal) modal.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('show');
+    }
+
 
 
   </script>
