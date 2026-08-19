@@ -5017,7 +5017,22 @@
     <div class="m-drawer-body">
       <div class="m-fg">
         <label class="m-fl">Search Keyword</label>
-        <input type="text" id="m-search-input" class="m-inp" placeholder="Party name, bill #, variety..." />
+        <input type="text" id="m-search-input" class="m-inp" placeholder="Party name, broker, bill #..." />
+      </div>
+      <div class="m-fg">
+        <label class="m-fl">Rice Variety / Item</label>
+        <select id="m-variety-select" class="m-inp">
+          <option value="">All Varieties</option>
+        </select>
+      </div>
+      <div class="m-fg">
+        <label class="m-fl">Payment Status</label>
+        <select id="m-payment-select" class="m-inp">
+          <option value="all">All Payment Statuses</option>
+          <option value="pending">Pending Payments</option>
+          <option value="unpaid">Unpaid Records</option>
+          <option value="paid">Paid Records</option>
+        </select>
       </div>
       <div class="m-fg">
         <label class="m-fl">From Date</label>
@@ -5033,6 +5048,7 @@
       <button class="m-btn-apply" onclick="applyMobileFilters()">Apply Filters</button>
     </div>
   </div>
+
 
   <!-- Mobile Detail Modal & Backdrop -->
   <div class="mobile-drawer-backdrop" id="mobileDetailBackdrop" onclick="closeMobileDetailModal()"></div>
@@ -5287,6 +5303,23 @@
     function openMobileFilterDrawer() {
       const drawer = document.getElementById('mobileFilterDrawer');
       const backdrop = document.getElementById('mobileDrawerBackdrop');
+
+      const varSelect = document.getElementById('m-variety-select');
+      if (varSelect) {
+        const currentSelected = varSelect.value;
+        const setOfVars = new Set();
+        (window._orders || window.allOrders || []).concat(window._purchases || window.allPurchases || []).forEach(o => {
+          if (o.variety) setOfVars.add(o.variety);
+          (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
+        });
+
+        let optsHtml = `<option value="">All Varieties</option>`;
+        [...setOfVars].sort().forEach(v => {
+          optsHtml += `<option value="${esc(v)}"${v === currentSelected ? ' selected' : ''}>${esc(v)}</option>`;
+        });
+        varSelect.innerHTML = optsHtml;
+      }
+
       if (drawer) drawer.classList.add('open');
       if (backdrop) backdrop.classList.add('show');
     }
@@ -5299,22 +5332,65 @@
     }
 
     function applyMobileFilters() {
-      const searchVal = document.getElementById('m-search-input')?.value || '';
+      const searchVal = (document.getElementById('m-search-input')?.value || '').toLowerCase();
       const fromDate = document.getElementById('m-from-date')?.value || '';
       const toDate = document.getElementById('m-to-date')?.value || '';
+      const selectedVar = document.getElementById('m-variety-select')?.value || '';
+      const payVal = document.getElementById('m-payment-select')?.value || 'all';
 
-      // Sync to desktop inputs if present
-      const dtSrch = document.getElementById('srch');
-      if (dtSrch) dtSrch.value = searchVal;
+      const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
 
-      const dtFrom = document.getElementById('date-from');
-      if (dtFrom && fromDate) dtFrom.value = fromDate;
+      if (activePage === 'page-orders') {
+        const dtParty = document.getElementById('f-party');
+        if (dtParty) dtParty.value = searchVal;
 
-      const dtTo = document.getElementById('date-to');
-      if (dtTo && toDate) dtTo.value = toDate;
+        const dtFrom = document.getElementById('f-from');
+        if (dtFrom) dtFrom.value = fromDate;
 
-      // Trigger table refresh
-      if (typeof applyFilters === 'function') applyFilters();
+        const dtTo = document.getElementById('f-to');
+        if (dtTo) dtTo.value = toDate;
+
+        if (typeof setPayFilter === 'function') {
+          setPayFilter(payVal);
+        }
+
+        if (selectedVar) {
+          const panel = document.getElementById('ms-variety-panel');
+          if (panel) {
+            panel.querySelectorAll('input').forEach(chk => {
+              chk.checked = (chk.value === selectedVar);
+            });
+            if (typeof msChange === 'function') msChange('ms-variety');
+          }
+        }
+
+        if (typeof applyF === 'function') applyF();
+      } else if (activePage === 'page-purchases') {
+        const dtParty = document.getElementById('pur-f-party');
+        if (dtParty) dtParty.value = searchVal;
+
+        const dtFrom = document.getElementById('pur-f-from');
+        if (dtFrom) dtFrom.value = fromDate;
+
+        const dtTo = document.getElementById('pur-f-to');
+        if (dtTo) dtTo.value = toDate;
+
+        if (typeof purSetPayFilter === 'function') {
+          purSetPayFilter(payVal);
+        }
+
+        if (selectedVar) {
+          const panel = document.getElementById('pur-ms-variety-panel');
+          if (panel) {
+            panel.querySelectorAll('input').forEach(chk => {
+              chk.checked = (chk.value === selectedVar);
+            });
+            if (typeof msChange === 'function') msChange('pur-ms-variety');
+          }
+        }
+
+        if (typeof purApplyF === 'function') purApplyF();
+      }
 
       closeMobileFilterDrawer();
     }
@@ -5323,10 +5399,19 @@
       if (document.getElementById('m-search-input')) document.getElementById('m-search-input').value = '';
       if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = '';
       if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = '';
+      if (document.getElementById('m-variety-select')) document.getElementById('m-variety-select').value = '';
+      if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = 'all';
 
-      if (typeof resetFilters === 'function') resetFilters();
+      const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
+      if (activePage === 'page-orders' && typeof resetF === 'function') {
+        resetF();
+      } else if (activePage === 'page-purchases' && typeof purResetF === 'function') {
+        purResetF();
+      }
+
       closeMobileFilterDrawer();
     }
+
 
     let _mobileCardsStore = {};
 
