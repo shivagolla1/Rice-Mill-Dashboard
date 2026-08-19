@@ -2352,6 +2352,10 @@
       font-family: var(--mono);
     }
 
+    .mobile-header-brand {
+      display: none;
+    }
+
     @media (max-width: 768px) {
       nav.sb {
         display: none !important;
@@ -2369,12 +2373,28 @@
         justify-content: space-between !important;
       }
 
-      .ph-logo-mobile {
-        display: block !important;
+      .mobile-header-brand {
+        display: flex !important;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .m-logo {
         width: 32px;
         height: 32px;
         border-radius: 6px;
         object-fit: cover;
+        border: 1px solid var(--bdr);
+      }
+
+      .m-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--tx);
+      }
+
+      .screen-header-title {
+        display: none !important;
       }
 
       .badge-code, .btn-print, .btn-export, .btn-upload, #btn-change-db {
@@ -2427,22 +2447,14 @@
       }
 
       .tw {
-        display: block !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        border-radius: 8px !important;
-        margin-bottom: 14px !important;
-        max-height: calc(100vh - 220px) !important;
-        border: 1px solid var(--bdr) !important;
+        display: none !important;
       }
 
-      .tw table {
-        min-width: 640px !important;
-      }
-
-      .tw th, .tw td, .td {
-        padding: 8px 10px !important;
-        font-size: 12px !important;
+      .mobile-card-list {
+        display: flex !important;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 16px;
       }
 
       .mobile-bottom-nav {
@@ -2488,6 +2500,7 @@
         line-height: 1;
       }
     }
+
 
 
   </style>
@@ -2653,6 +2666,10 @@
 
       <!-- Sticky title header only -->
       <div class="ph ph-sticky">
+        <div class="mobile-header-brand">
+          <img src="/{{ industry_logo }}" alt="Logo" class="m-logo" />
+          <div class="m-title">{{ industry_name }}</div>
+        </div>
         <div class="print-brand-header">
           <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
           <div class="pbh-text">
@@ -2682,6 +2699,8 @@
       </div>
       <!-- Filters scroll normally -->
       <div class="pc">
+        <div class="mobile-card-list" id="sales-mobile-card-list"></div>
+
         <div class="fbar">
           <div class="fg"><span class="fl">Bill No</span><input type="text" id="f-ioid" placeholder="Search…"
               style="width:80px" oninput="applyF()" /></div>
@@ -2767,6 +2786,10 @@
     <div class="page" id="page-purchases">
       <!-- Sticky title header only -->
       <div class="ph ph-sticky">
+        <div class="mobile-header-brand">
+          <img src="/{{ industry_logo }}" alt="Logo" class="m-logo" />
+          <div class="m-title">{{ industry_name }}</div>
+        </div>
         <div class="print-brand-header">
           <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
           <div class="pbh-text">
@@ -2797,6 +2820,8 @@
       </div>
       <!-- Filters scroll normally -->
       <div class="pc">
+        <div class="mobile-card-list" id="purchases-mobile-card-list"></div>
+
         <div class="fbar">
           <div class="fg"><span class="fl">Bill No</span><input type="text" id="pur-f-ioid" placeholder="Search…"
               style="width:80px" oninput="purApplyF()" /></div>
@@ -3503,7 +3528,11 @@
       tbody.innerHTML = html;
       window._orders = orders;
       updateTotals('sales', orders);
+      if (typeof renderMobileCardList === 'function') {
+        renderMobileCardList(orders, 'sales-mobile-card-list');
+      }
     }
+
 
     function getCompactPayLine(o) {
       const due = o.amount || 0;
@@ -3815,7 +3844,11 @@
       tbody.innerHTML = html;
       window._purchases = orders;
       updateTotals('pur', orders);
+      if (typeof renderMobileCardList === 'function') {
+        renderMobileCardList(orders, 'purchases-mobile-card-list');
+      }
     }
+
 
     function purToggleExpand(i) {
       const row = document.getElementById('pur-exp-' + i);
@@ -5258,27 +5291,35 @@
 
       let html = '';
       items.forEach(item => {
-        const variety = item.variety || item.item_name || 'Rice Variety';
-        const party = item.party_name || item.credit_account || '—';
+        const variety = item.variety || (item.details && item.details[0] && item.details[0].variety) || 'Rice Variety';
+        const party = item.party_name || item.party || item.credit_account || '—';
         const bags = item.bags || item.quantity || '0';
-        const qtl = item.quintal || item.qtl || '0';
+        const qtl = item.qtl || item.quintal || '0';
         const date = item.loaded_date || item.date || '—';
-        const bill = item.bill_no || item.r_no || '—';
-        const amount = item.net_amount || item.amount || '0';
-        const status = (item.payment_status || 'PAID').toUpperCase();
-        const statusClass = status.includes('PEND') ? 'st-pending' : (status.includes('LATE') ? 'st-late' : 'st-paid');
+        const bill = item.bill_no || item.io_id || item.r_no || '—';
+        const amount = item.amount || item.net_amount || 0;
+        
+        const paid = item.paid || 0;
+        const bal = item.balance ?? amount;
+        let status = 'PAID', statusClass = 'st-paid';
+        if (bal <= 0) { status = 'PAID'; statusClass = 'st-paid'; }
+        else if (paid > 0) { status = 'PARTIAL'; statusClass = 'st-pending'; }
+        else { status = 'UNPAID'; statusClass = 'st-late'; }
+
+        const numAmt = parseFloat(String(amount).replace(/[^\d.]/g, '')) || 0;
+        const formattedAmt = numAmt.toLocaleString('en-IN');
 
         html += `
-          <div class="m-card" onclick="showMobileItemDetail('${bill}', '${party}')">
+          <div class="m-card" onclick="showMobileItemDetail('${esc(bill)}', '${esc(party)}', '${esc(variety)}', '${fmtN(bags)}', '${fmt(qtl)}', '${formattedAmt}', '${status}')">
             <div class="m-card-hdr">
-              <span class="m-card-thumb">🌾 ${variety}</span>
+              <span class="m-card-thumb">🌾 ${esc(variety)}</span>
               <span class="m-card-badge ${statusClass}">${status}</span>
             </div>
-            <div class="m-card-party">${party}</div>
-            <div class="m-card-sub">📦 ${bags} Bags (${qtl} Qtl)  •  📅 ${date}</div>
+            <div class="m-card-party">${esc(party)}</div>
+            <div class="m-card-sub">📦 ${fmtN(bags)} Bags (${fmt(qtl)} Qtl)  •  📅 ${esc(date)}</div>
             <div class="m-card-ftr">
-              <span class="m-card-bill">#${bill}</span>
-              <span class="m-card-amt">₹${Number(amount).toLocaleString('en-IN')}</span>
+              <span class="m-card-bill">#${esc(bill)}</span>
+              <span class="m-card-amt">₹${formattedAmt}</span>
             </div>
           </div>
         `;
@@ -5287,9 +5328,10 @@
       container.innerHTML = html;
     }
 
-    function showMobileItemDetail(bill, party) {
-      alert(`Bill No: ${bill}\nParty: ${party}`);
+    function showMobileItemDetail(bill, party, variety, bags, qtl, amount, status) {
+      alert(`📄 Bill #${bill}\n👤 Party: ${party}\n🌾 Variety: ${variety}\n📦 Bags: ${bags} (${qtl} Qtl)\n💰 Amount: ₹${amount}\n📌 Status: ${status}`);
     }
+
 
   </script>
 

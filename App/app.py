@@ -54,7 +54,15 @@ if BASE not in sys.path:
 
 from datetime import timedelta
 app  = Flask(__name__, template_folder='templates', static_folder='static')
-app.secret_key = os.environ.get('SESSION_SECRET', 'RiceMillDashboardSessionSecret2026!')
+app.secret_key = os.environ.get('SECRET_KEY', 'RiceMillSyncSecretToken2026')
+
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=int(os.environ.get('SESSION_TIMEOUT_HOURS', 12)))
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
