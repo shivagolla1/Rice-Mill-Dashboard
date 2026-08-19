@@ -1701,14 +1701,29 @@ def quick_upload_page():
         secret_token=tenant.get('secret_token', secret_token or '')
     )
 
+def _async_process_upload_audit(tenant_id):
+    try:
+        tx_data = get_transactions('all', tenant_id=tenant_id)
+        if isinstance(tx_data, list):
+            audit_engine.AuditEngine.process_upload(tenant_id, tx_data)
+    except Exception as audit_err:
+        print(f"Async AuditEngine process_upload error for {tenant_id}:", audit_err)
+
 @app.route('/api/upload-database', methods=['POST'])
 def api_upload_database():
-    company_code = request.args.get('code') or request.form.get('code') or request.headers.get('X-Company-Code', '').strip()
-    secret_token = request.args.get('token') or request.form.get('token') or request.headers.get('X-Sync-Token') or request.headers.get('X-License-Key', '').strip()
+    tenant = None
+    if 'user' in session and isinstance(session['user'], dict):
+        tenant_id = session.get('tenant_id') or session['user'].get('tenant_id')
+        if tenant_id:
+            tenant = tenants.get_tenant_by_id(tenant_id)
 
-    tenant = resolve_tenant_for_upload(company_code, secret_token)
     if not tenant:
-        return jsonify({'status': 'error', 'message': 'Authentication required or invalid Company Code & Secret Token'}), 401
+        company_code = request.args.get('code') or request.form.get('code') or request.headers.get('X-Company-Code', '').strip()
+        secret_token = request.args.get('token') or request.form.get('token') or request.headers.get('X-Sync-Token') or request.headers.get('X-License-Key', '').strip()
+        tenant = resolve_tenant_for_upload(company_code, secret_token)
+
+    if not tenant:
+        return jsonify({'status': 'error', 'message': 'Authentication required. Please provide valid Company Code & Token or log in.'}), 401
 
     tenant_id = tenant.get('tenant_id', 'client_default')
 
@@ -1716,6 +1731,9 @@ def api_upload_database():
         return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
 
     f = request.files['file']
+    if not f or not f.filename:
+        return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+
     raw_bytes = f.read()
     if not raw_bytes:
         return jsonify({'status': 'error', 'message': 'Uploaded file is empty'}), 400
@@ -1754,24 +1772,16 @@ def api_upload_database():
     with _tenant_cache_lock:
         _tenant_caches.clear()
 
-    # Trigger AuditEngine snapshot creation & diffing for this tenant
-    try:
-        tx_data = get_transactions('all', tenant_id=tenant_id)
-        if isinstance(tx_data, list):
-            audit_engine.AuditEngine.process_upload(tenant_id, tx_data)
-    except Exception as audit_err:
-        print("AuditEngine process_upload error:", audit_err)
-
-    # Purge RAM cache again after audit snapshot generation to guarantee fresh reads on dashboard open
-    with _tenant_cache_lock:
-        _tenant_caches.clear()
+    # Trigger AuditEngine snapshot creation asynchronously in a background thread
+    threading.Thread(target=_async_process_upload_audit, args=(tenant_id,), daemon=True).start()
 
     return jsonify({
         'status': 'ok',
-        'message': f"File updated successfully for {tenant.get('company_name', 'Rice Mill')}! Reports and Audit Log have been updated.",
+        'message': f"Database file updated successfully for {tenant.get('company_name', 'Rice Mill')}!",
         'filename': f.filename,
         'size_bytes': len(mdb_bytes)
     })
+
 
 
 
