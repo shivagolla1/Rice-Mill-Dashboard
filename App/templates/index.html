@@ -2381,10 +2381,16 @@
       }
 
       .ph {
-        padding: 12px 14px !important;
+        padding-top: max(48px, env(safe-area-inset-top, 48px)) !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        padding-bottom: 12px !important;
         flex-direction: row !important;
         align-items: center !important;
         justify-content: space-between !important;
+        background: rgba(250, 247, 242, 0.98) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
       }
 
       .mobile-header-brand {
@@ -2474,16 +2480,18 @@
         bottom: 0;
         left: 0;
         right: 0;
-        height: 60px;
-        background: rgba(242, 237, 228, 0.96);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        height: max(60px, calc(52px + env(safe-area-inset-bottom, 12px))) !important;
+        background: rgba(242, 237, 228, 0.98);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         border-top: 1px solid var(--bdr2);
         z-index: 900;
         justify-content: space-around;
         align-items: center;
-        padding-bottom: env(safe-area-inset-bottom);
+        padding-bottom: env(safe-area-inset-bottom, 8px) !important;
         box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+        overflow: hidden !important;
+        box-sizing: border-box !important;
       }
 
       .mobile-nav-item {
@@ -2491,15 +2499,18 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 2px;
+        gap: 3px;
         color: var(--tx2);
         font-size: 10px;
         font-weight: 600;
         text-decoration: none;
         flex: 1;
         height: 100%;
+        padding: 4px 0;
+        box-sizing: border-box;
         cursor: pointer;
         transition: all 0.15s ease;
+        overflow: hidden;
       }
 
       .mobile-nav-item.active {
@@ -2507,10 +2518,15 @@
       }
 
       .mobile-nav-icon {
-        font-size: 18px;
-        line-height: 1;
+        font-size: 16px !important;
+        line-height: 1 !important;
+        height: 18px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
       }
     }
+
 
 
 
@@ -2916,6 +2932,10 @@
     {% if show_stocks %}
     <div class="page" id="page-stocks">
       <div class="ph ph-sticky">
+        <div class="mobile-header-brand">
+          <img src="/{{ industry_logo }}" alt="Logo" class="m-logo" />
+          <div class="m-title">{{ industry_name }}</div>
+        </div>
         <div class="print-brand-header">
           <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
           <div class="pbh-text">
@@ -2945,6 +2965,8 @@
         </div>
       </div>
       <div class="pc">
+        <div class="mobile-card-list" id="stocks-mobile-card-list"></div>
+
         <div class="fbar" id="stk-fbar">
           <div class="fg"><span class="fl">From</span><input type="date" id="sf-from" onchange="stkApplyF()" /></div>
           <div class="fg"><span class="fl">To</span><input type="date" id="sf-to" onchange="stkApplyF()" /></div>
@@ -3970,7 +3992,43 @@
     <td class="td num stk-kharchu" style="font-weight:700">${CURR}${fmt(gtKharchu, 0)}</td>
   </tr>`);
       tbody.innerHTML = rows.join('');
+      if (typeof renderMobileStockCards === 'function') {
+        renderMobileStockCards(allStkGroups);
+      }
     }
+
+    function renderMobileStockCards(groups) {
+      const container = document.getElementById('stocks-mobile-card-list');
+      if (!container) return;
+      if (!groups || groups.length === 0) {
+        container.innerHTML = `<div class="no-match">No stock data available</div>`;
+        return;
+      }
+      let html = '';
+      groups.forEach(g => {
+        const gBags = (g.rows || []).reduce((s, r) => s + (r.bags || 0), 0);
+        const gQtls = (g.rows || []).reduce((s, r) => s + (r.qtls || 0), 0);
+        const gJama = (g.rows || []).reduce((s, r) => s + (r.jama || 0), 0);
+        const gKharchu = (g.rows || []).reduce((s, r) => s + (r.kharchu || 0), 0);
+        const netAmt = gJama - gKharchu;
+
+        html += `
+          <div class="m-card" style="cursor:default;">
+            <div class="m-card-hdr">
+              <span class="m-card-thumb">${esc(g.variety)}</span>
+              <span class="m-card-badge ${netAmt >= 0 ? 'st-paid' : 'st-late'}">${netAmt >= 0 ? 'STOCK IN' : 'OUT'}</span>
+            </div>
+            <div class="m-card-sub">📦 ${fmtN(Math.round(gBags))} Bags (${fmt(gQtls, 2)} Qtl)</div>
+            <div class="m-card-ftr">
+              <span class="m-card-bill">Jama: ₹${Number(gJama).toLocaleString('en-IN')}</span>
+              <span class="m-card-amt">Net: ₹${Number(netAmt).toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
     function stkResetF() {
       document.getElementById('sf-from').value = '';
       document.getElementById('sf-to').value = '';
@@ -5077,9 +5135,21 @@
       document.querySelectorAll('.main .page').forEach(el => {
         el.classList.toggle('active', el.id === 'page-' + pageId);
       });
+
+      if (pageId === 'orders' && typeof loadOrders === 'function') {
+        if (!window.allOrders || window.allOrders.length === 0) loadOrders();
+      }
+      if (pageId === 'purchases' && typeof loadPurchases === 'function') {
+        if (!window.allPurchases || window.allPurchases.length === 0 || !window.purLoaded) loadPurchases();
+      }
+      if ((pageId === 'journal' || pageId === 'stocks') && typeof loadStocks === 'function') {
+        if (!window.stocksLoaded) loadStocks();
+      }
       if (pageId === 'audit') loadAuditTrail();
+
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
 
     let rawAuditLogs = [];
 
