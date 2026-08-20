@@ -1711,6 +1711,7 @@ def _async_process_upload_audit(tenant_id):
 
 @app.route('/api/upload-database', methods=['POST'])
 def api_upload_database():
+    global MDB_PATH
     tenant = None
     if 'user' in session and isinstance(session['user'], dict):
         tenant_id = session.get('tenant_id') or session['user'].get('tenant_id')
@@ -1727,16 +1728,59 @@ def api_upload_database():
 
     tenant_id = tenant.get('tenant_id', 'client_default')
 
-    if 'file' not in request.files:
-        return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+    # Support Chunked Uploads
+    try:
+        chunk_idx = int(request.headers.get('X-Chunk-Index', 0))
+    except (ValueError, TypeError):
+        chunk_idx = 0
 
-    f = request.files['file']
-    if not f or not f.filename:
-        return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+    try:
+        total_chunks = int(request.headers.get('X-Total-Chunks', 1))
+    except (ValueError, TypeError):
+        total_chunks = 1
 
-    raw_bytes = f.read()
-    if not raw_bytes:
-        return jsonify({'status': 'error', 'message': 'Uploaded file is empty'}), 400
+    upload_id = request.headers.get('X-Upload-ID', 'default').strip()
+
+    if 'file' in request.files:
+        f = request.files['file']
+        if not f or not f.filename:
+            return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+        chunk_bytes = f.read()
+    else:
+        chunk_bytes = request.data
+
+    if not chunk_bytes and total_chunks > 0:
+        return jsonify({'status': 'error', 'message': 'Empty upload payload'}), 400
+
+    if total_chunks > 1:
+        temp_dir = os.environ.get('DATA_DIR', '') or (os.path.dirname(MDB_PATH) if MDB_PATH else os.path.join(EXE_DIR, 'data'))
+        try:
+            os.makedirs(temp_dir, exist_ok=True)
+        except Exception:
+            temp_dir = '/tmp' if os.name != 'nt' else os.path.join(EXE_DIR, 'data')
+            os.makedirs(temp_dir, exist_ok=True)
+
+        safe_up_id = "".join(c for c in upload_id if c.isalnum() or c in ('_', '-'))
+        temp_file = os.path.join(temp_dir, f"temp_upload_{tenant_id}_{safe_up_id}.part")
+
+        # Write or append chunk
+        mode = 'wb' if chunk_idx == 0 else 'ab'
+        with open(temp_file, mode) as out_tf:
+            out_tf.write(chunk_bytes)
+
+        if chunk_idx < total_chunks - 1:
+            return jsonify({'status': 'chunk_received', 'chunk_idx': chunk_idx, 'total_chunks': total_chunks})
+
+        # Final chunk received: assemble complete raw_bytes
+        with open(temp_file, 'rb') as in_tf:
+            raw_bytes = in_tf.read()
+
+        try:
+            os.remove(temp_file)
+        except Exception:
+            pass
+    else:
+        raw_bytes = chunk_bytes
 
     enc_key = tenant.get('encryption_key', '') if tenant else ''
 
@@ -1765,7 +1809,6 @@ def api_upload_database():
         pass
 
     if tenant_id == 'client_default':
-        global MDB_PATH
         MDB_PATH = target_mdb
 
     # Wipe all in-memory table caches across all keys
@@ -1778,7 +1821,6 @@ def api_upload_database():
     return jsonify({
         'status': 'ok',
         'message': f"Database file updated successfully for {tenant.get('company_name', 'Rice Mill')}!",
-        'filename': f.filename,
         'size_bytes': len(mdb_bytes)
     })
 

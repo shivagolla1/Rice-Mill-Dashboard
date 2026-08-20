@@ -4912,35 +4912,78 @@
       msgBox.style.display = 'block';
       msgBox.style.background = 'rgba(40,140,200,0.15)';
       msgBox.style.color = '#0284c7';
-      msgBox.innerText = 'Uploading and syncing Filein seconds...';
+      msgBox.innerText = 'Compressing database file…';
       submitBtn.disabled = true;
 
-      const formData = new FormData();
-      formData.append('file', file);
+      let payloadBlob = file;
+      if ('CompressionStream' in window) {
+        try {
+          const stream = file.stream().pipeThrough(new CompressionStream('gzip'));
+          payloadBlob = await new Response(stream).blob();
+        } catch (e) {
+          payloadBlob = file;
+        }
+      }
 
-      try {
-        const resp = await fetch('/api/upload-database', {
-          method: 'POST',
-          body: formData
-        });
-        const res = await resp.json();
-        if (resp.ok && res.status === 'ok') {
-          msgBox.style.background = 'rgba(40,140,60,0.15)';
-          msgBox.style.color = '#1e6028';
-          msgBox.innerText = '✓ Filesynced successfully! Refreshing dashboard...';
-          setTimeout(() => { window.location.reload(); }, 1500);
-        } else {
+      const chunkSize = 1024 * 1024;
+      const totalBytes = payloadBlob.size;
+      const totalChunks = Math.ceil(totalBytes / chunkSize) || 1;
+      const uploadId = 'up_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+
+      for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+        const start = chunkIdx * chunkSize;
+        const end = Math.min(start + chunkSize, totalBytes);
+        const chunkBlob = payloadBlob.slice(start, end);
+
+        let attempts = 0;
+        let success = false;
+        let lastError = 'Upload failed';
+
+        while (attempts < 3 && !success) {
+          attempts++;
+          try {
+            const formData = new FormData();
+            formData.append('file', chunkBlob, 'database.part');
+
+            const resp = await fetch('/api/upload-database', {
+              method: 'POST',
+              headers: {
+                'X-Chunk-Index': chunkIdx,
+                'X-Total-Chunks': totalChunks,
+                'X-Upload-ID': uploadId
+              },
+              body: formData
+            });
+            const res = await resp.json();
+
+            if (resp.ok && (res.status === 'ok' || res.status === 'chunk_received')) {
+              success = true;
+              const pct = Math.min(99, Math.round(((chunkIdx + 1) / totalChunks) * 100));
+              msgBox.innerText = `Uploading and syncing file... (${pct}%)`;
+
+              if (res.status === 'ok') {
+                msgBox.style.background = 'rgba(40,140,60,0.15)';
+                msgBox.style.color = '#1e6028';
+                msgBox.innerText = '✓ File synced successfully! Refreshing dashboard...';
+                setTimeout(() => { window.location.reload(); }, 1500);
+                return;
+              }
+            } else {
+              lastError = res.message || 'Upload failed';
+            }
+          } catch (err) {
+            lastError = 'Network connection error during upload.';
+            if (attempts < 3) await new Promise(r => setTimeout(r, 1500));
+          }
+        }
+
+        if (!success) {
           msgBox.style.background = 'rgba(168,56,32,0.15)';
           msgBox.style.color = '#a83820';
-          msgBox.innerText = res.message || 'Upload failed';
+          msgBox.innerText = lastError;
           submitBtn.disabled = false;
+          return;
         }
-      } catch (err) {
-        msgBox.style.display = 'block';
-        msgBox.style.background = 'rgba(168,56,32,0.15)';
-        msgBox.style.color = '#a83820';
-        msgBox.innerText = 'Network connection error during upload.';
-        submitBtn.disabled = false;
       }
     }
 

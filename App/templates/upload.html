@@ -453,7 +453,19 @@
       uploadFile(file);
     }
 
-    function uploadFile(file) {
+    async function compressBlob(blob) {
+      if ('CompressionStream' in window) {
+        try {
+          const stream = blob.stream().pipeThrough(new CompressionStream('gzip'));
+          return await new Response(stream).blob();
+        } catch (e) {
+          console.warn('CompressionStream fallback:', e);
+        }
+      }
+      return blob;
+    }
+
+    async function uploadFile(file) {
       const progressBox = document.getElementById('progressBox');
       const progressBar = document.getElementById('progressBar');
       const progressPercent = document.getElementById('progressPercent');
@@ -466,55 +478,114 @@
       errorAlert.style.display = 'none';
       progressBar.style.width = '0%';
       progressPercent.innerText = '0%';
+      progressText.innerText = 'Compressing database file…';
+
+      let payloadBlob = file;
+      try {
+        payloadBlob = await compressBlob(file);
+      } catch (e) {
+        payloadBlob = file;
+      }
+
       progressText.innerText = 'Uploading database file…';
 
-      const formData = new FormData();
-      formData.append('file', file);
+      const chunkSize = 1024 * 1024; // 1 MB per chunk
+      const totalBytes = payloadBlob.size;
+      const totalChunks = Math.ceil(totalBytes / chunkSize) || 1;
+      const uploadId = 'up_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
 
-      const xhr = new XMLHttpRequest();
-      const endpoint = `/api/upload-database?code=${encodeURIComponent(companyCode)}&token=${encodeURIComponent(secretToken)}`;
+      for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+        const start = chunkIdx * chunkSize;
+        const end = Math.min(start + chunkSize, totalBytes);
+        const chunkBlob = payloadBlob.slice(start, end);
 
-      xhr.open('POST', endpoint, true);
-      xhr.setRequestHeader('X-Company-Code', companyCode);
-      xhr.setRequestHeader('X-Sync-Token', secretToken);
+        let attempts = 0;
+        let success = false;
+        let lastError = 'Upload failed';
 
-      xhr.upload.onprogress = function (e) {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 100);
-          progressBar.style.width = percent + '%';
-          progressPercent.innerText = percent + '%';
-        }
-      };
-
-      xhr.onload = function () {
-        if (xhr.status >= 200 && xhr.status < 300) {
+        while (attempts < 3 && !success) {
+          attempts++;
           try {
-            const resp = JSON.parse(xhr.responseText);
-            if (resp.status === 'ok') {
+            const resp = await sendUploadChunk(chunkBlob, chunkIdx, totalChunks, uploadId, (loaded, total) => {
+              const currentProgress = Math.min(99, Math.round(((chunkIdx * chunkSize + loaded) / totalBytes) * 100));
+              progressBar.style.width = currentProgress + '%';
+              progressPercent.innerText = currentProgress + '%';
+              progressText.innerText = `Uploading database file… (${currentProgress}%)`;
+            });
+
+            if (resp.status === 'chunk_received') {
+              success = true;
+            } else if (resp.status === 'ok') {
+              success = true;
+              progressBar.style.width = '100%';
+              progressPercent.innerText = '100%';
+              progressText.innerText = 'Sync complete!';
               showSuccess(`✓ Database file '<strong>${file.name}</strong>' uploaded successfully!`);
               document.getElementById('btnDashboard').style.display = 'block';
+              return;
             } else {
-              showError(resp.message || 'Upload failed');
+              lastError = resp.message || 'Upload chunk failed';
             }
           } catch (err) {
-            showSuccess(`✓ Database uploaded successfully!`);
-            document.getElementById('btnDashboard').style.display = 'block';
-          }
-        } else {
-          try {
-            const resp = JSON.parse(xhr.responseText);
-            showError(resp.message || `Upload failed with status code ${xhr.status}`);
-          } catch (err) {
-            showError(`Upload failed with status code ${xhr.status}`);
+            lastError = err.message || 'Network connection error';
+            if (attempts < 3) {
+              progressText.innerText = `Network hiccup, retrying chunk ${chunkIdx + 1}/${totalChunks}…`;
+              await new Promise(r => setTimeout(r, 1500));
+            }
           }
         }
-      };
 
-      xhr.onerror = function () {
-        showError('Network connection error during upload. Please try again.');
-      };
+        if (!success) {
+          showError(lastError || 'Network connection error during upload. Please try again.');
+          return;
+        }
+      }
+    }
 
-      xhr.send(formData);
+    function sendUploadChunk(blob, chunkIdx, totalChunks, uploadId, onProgress) {
+      return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', blob, 'database.part');
+
+        const xhr = new XMLHttpRequest();
+        const endpoint = `/api/upload-database?code=${encodeURIComponent(companyCode)}&token=${encodeURIComponent(secretToken)}`;
+
+        xhr.open('POST', endpoint, true);
+        xhr.setRequestHeader('X-Company-Code', companyCode);
+        xhr.setRequestHeader('X-Sync-Token', secretToken);
+        xhr.setRequestHeader('X-Chunk-Index', chunkIdx);
+        xhr.setRequestHeader('X-Total-Chunks', totalChunks);
+        xhr.setRequestHeader('X-Upload-ID', uploadId);
+
+        if (xhr.upload && onProgress) {
+          xhr.upload.onprogress = function (e) {
+            if (e.lengthComputable) onProgress(e.loaded, e.total);
+          };
+        }
+
+        xhr.onload = function () {
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(resp);
+            } else {
+              reject(new Error(resp.message || `Upload error HTTP ${xhr.status}`));
+            }
+          } catch (err) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve({ status: 'ok' });
+            } else {
+              reject(new Error(`Upload error HTTP ${xhr.status}`));
+            }
+          }
+        };
+
+        xhr.onerror = function () {
+          reject(new Error('Network connection error during upload. Please try again.'));
+        };
+
+        xhr.send(formData);
+      });
     }
 
     function showSuccess(msg) {
