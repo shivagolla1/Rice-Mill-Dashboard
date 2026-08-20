@@ -5135,29 +5135,34 @@
 
   <script>
     function switchMobilePage(pageId) {
+      const targetId = (pageId === 'journal') ? 'stocks' : pageId;
+
       document.querySelectorAll('.sb-nav .nav-item').forEach(el => {
-        el.classList.toggle('active', el.getAttribute('data-page') === pageId);
+        const p = el.getAttribute('data-page');
+        el.classList.toggle('active', p === pageId || p === targetId);
       });
       document.querySelectorAll('.mobile-bottom-nav .mobile-nav-item').forEach(el => {
-        el.classList.toggle('active', el.getAttribute('data-page') === pageId);
+        const p = el.getAttribute('data-page');
+        el.classList.toggle('active', p === pageId || p === targetId);
       });
       document.querySelectorAll('.main .page').forEach(el => {
-        el.classList.toggle('active', el.id === 'page-' + pageId);
+        el.classList.toggle('active', el.id === 'page-' + targetId);
       });
 
-      if (pageId === 'orders' && typeof loadOrders === 'function') {
-        if (!window.allOrders || window.allOrders.length === 0) loadOrders();
+      if (targetId === 'orders' && typeof loadOrders === 'function') {
+        if (!allOrders || allOrders.length === 0) loadOrders();
       }
-      if (pageId === 'purchases' && typeof loadPurchases === 'function') {
-        if (!window.allPurchases || window.allPurchases.length === 0 || !window.purLoaded) loadPurchases();
+      if (targetId === 'purchases' && typeof loadPurchases === 'function') {
+        if (!allPurchases || allPurchases.length === 0 || !purLoaded) loadPurchases();
       }
-      if ((pageId === 'journal' || pageId === 'stocks') && typeof loadStocks === 'function') {
-        if (!window.stocksLoaded) loadStocks();
+      if (targetId === 'stocks' && typeof loadStocks === 'function') {
+        if (!stocksLoaded) loadStocks();
       }
-      if (pageId === 'audit') loadAuditTrail();
+      if (targetId === 'audit') loadAuditTrail();
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
 
 
     let rawAuditLogs = [];
@@ -5389,22 +5394,26 @@
         const currentSelected = varSelect.value;
         const setOfVars = new Set();
 
+        const salesList = (typeof allOrders !== 'undefined' && Array.isArray(allOrders)) ? allOrders : (window._orders || []);
+        const purList = (typeof allPurchases !== 'undefined' && Array.isArray(allPurchases)) ? allPurchases : (window._purchases || []);
+
         if (activePage === 'page-orders') {
-          (window.allOrders || []).forEach(o => {
+          salesList.forEach(o => {
             if (o.variety) setOfVars.add(o.variety);
             (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
           });
         } else if (activePage === 'page-purchases') {
-          (window.allPurchases || []).forEach(o => {
+          purList.forEach(o => {
             if (o.variety) setOfVars.add(o.variety);
             (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
           });
         } else {
-          (window.allOrders || []).concat(window.allPurchases || []).forEach(o => {
+          salesList.concat(purList).forEach(o => {
             if (o.variety) setOfVars.add(o.variety);
             (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
           });
         }
+
 
         let optsHtml = `<option value="">All Varieties</option>`;
         [...setOfVars].sort().forEach(v => {
