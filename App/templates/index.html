@@ -3133,6 +3133,10 @@
 
     <div class="page" id="page-journal">
       <div class="ph ph-sticky">
+        <div class="mobile-header-brand">
+          <img src="/{{ industry_logo }}" alt="Logo" class="m-logo" />
+          <div class="m-title">{{ industry_name }}</div>
+        </div>
         <div class="print-brand-header">
           <img src="/{{ industry_logo }}" alt="Logo" class="pbh-logo" />
           <div class="pbh-text">
@@ -3162,6 +3166,8 @@
         </div>
       </div>
       <div class="pc">
+        <div class="mobile-card-list" id="journal-mobile-card-list"></div>
+
         <div class="fbar" id="jnl-fbar">
           <div class="fg"><span class="fl">Jama Account</span><input type="text" id="jf-dr" placeholder="Search…"
               style="width:140px" oninput="jApplyF()" /></div>
@@ -4519,7 +4525,11 @@
     function renderJournal(rows) {
       document.getElementById('jfcnt').textContent = `${rows.length} of ${allJournal.length} entries`;
       const tbody = document.getElementById('jnl-body');
-      if (!rows.length) { tbody.innerHTML = `<tr><td colspan="7" class="td"><div class="empty">No entries match filters.</div></td></tr>`; return; }
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="td"><div class="empty">No entries match filters.</div></td></tr>`;
+        if (typeof renderMobileJournalCards === 'function') renderMobileJournalCards([]);
+        return;
+      }
       tbody.innerHTML = rows.map(r => `
   <tr class="dr">
     <td class="td num" style="color:var(--accent-lt);font-weight:600">${esc(r.journal_id)}</td>
@@ -4530,7 +4540,49 @@
     <td class="td" style="font-size:12px;color:var(--tx2);max-width:220px">${esc(r.details)}</td>
     <td class="td" style="font-size:12px;color:var(--tx3)">${esc(r.type)}</td>
   </tr>`).join('');
+
+      if (typeof renderMobileJournalCards === 'function') {
+        renderMobileJournalCards(rows);
+      }
     }
+
+    function renderMobileJournalCards(rows) {
+      const container = document.getElementById('journal-mobile-card-list');
+      if (!container) return;
+      if (!rows || rows.length === 0) {
+        container.innerHTML = `<div class="no-match">No journal entries match filters</div>`;
+        return;
+      }
+      let html = '';
+      rows.forEach(r => {
+        const amt = Number(r.amount || 0).toLocaleString('en-IN');
+        const dr = esc(r.dr_account || '—');
+        const cr = esc(r.cr_account || '—');
+        const details = esc(r.details || '');
+        const jId = esc(r.journal_id || '—');
+        const dt = esc(r.date || '');
+
+        html += `
+          <div class="m-card" style="cursor:default;">
+            <div class="m-card-hdr">
+              <span class="m-card-thumb">Ref #${jId}</span>
+              <span class="m-card-badge st-paid">JOURNAL</span>
+            </div>
+            <div style="font-size:13px; font-weight:600; color:var(--tx); margin:6px 0;">
+              <div>Jama: <span style="color:var(--accent-lt);">${dr}</span></div>
+              <div>Kharchu: <span style="color:var(--tx2);">${cr}</span></div>
+            </div>
+            ${details ? `<div style="font-size:11px; color:var(--tx3); margin-bottom:6px;">${details}</div>` : ''}
+            <div class="m-card-ftr">
+              <span class="m-card-bill">📅 ${dt}</span>
+              <span class="m-card-amt">₹${amt}</span>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
 
     function exportToExcel(tableSelector, filename) {
       try {
@@ -5135,33 +5187,35 @@
 
   <script>
     function switchMobilePage(pageId) {
-      const targetId = (pageId === 'journal') ? 'stocks' : pageId;
-
       document.querySelectorAll('.sb-nav .nav-item').forEach(el => {
         const p = el.getAttribute('data-page');
-        el.classList.toggle('active', p === pageId || p === targetId);
+        el.classList.toggle('active', p === pageId);
       });
       document.querySelectorAll('.mobile-bottom-nav .mobile-nav-item').forEach(el => {
         const p = el.getAttribute('data-page');
-        el.classList.toggle('active', p === pageId || p === targetId);
+        el.classList.toggle('active', p === pageId);
       });
       document.querySelectorAll('.main .page').forEach(el => {
-        el.classList.toggle('active', el.id === 'page-' + targetId);
+        el.classList.toggle('active', el.id === 'page-' + pageId);
       });
 
-      if (targetId === 'orders' && typeof loadOrders === 'function') {
+      if (pageId === 'orders' && typeof loadOrders === 'function') {
         if (!allOrders || allOrders.length === 0) loadOrders();
       }
-      if (targetId === 'purchases' && typeof loadPurchases === 'function') {
+      if (pageId === 'purchases' && typeof loadPurchases === 'function') {
         if (!allPurchases || allPurchases.length === 0 || !purLoaded) loadPurchases();
       }
-      if (targetId === 'stocks' && typeof loadStocks === 'function') {
+      if (pageId === 'journal' && typeof loadJournal === 'function') {
+        if (!jnlLoaded || !allJournal || allJournal.length === 0) loadJournal();
+      }
+      if (pageId === 'stocks' && typeof loadStocks === 'function') {
         if (!stocksLoaded) loadStocks();
       }
-      if (targetId === 'audit') loadAuditTrail();
+      if (pageId === 'audit') loadAuditTrail();
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
 
 
 
