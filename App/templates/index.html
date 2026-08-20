@@ -5606,35 +5606,7 @@
 
       closeMobileFilterDrawer();
     }
-Var) : false;
-          });
-          if (typeof msChange === 'function') msChange('pur-ms-variety');
-        }
 
-        if (typeof purApplyF === 'function') purApplyF();
-      }
-
-      closeMobileFilterDrawer();
-    }
-
-    function resetMobileFilters() {
-      if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = '';
-      if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = '';
-      if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = '';
-      if (document.getElementById('m-variety-select')) document.getElementById('m-variety-select').value = '';
-      if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = '';
-      if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = '';
-      if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = 'all';
-
-      const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
-      if (activePage === 'page-orders' && typeof resetF === 'function') {
-        resetF();
-      } else if (activePage === 'page-purchases' && typeof purResetF === 'function') {
-        purResetF();
-      }
-
-      closeMobileFilterDrawer();
-    }
 
 
 
