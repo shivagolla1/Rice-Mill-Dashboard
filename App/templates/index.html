@@ -5125,24 +5125,37 @@
       <button onclick="closeMobileFilterDrawer()" style="background:none; border:none; color:var(--tx3); font-size:20px; cursor:pointer; padding:4px;">✕</button>
     </div>
     <div class="m-drawer-body">
-      <div class="m-fg">
+      <!-- Sales & Purchases Specific Fields -->
+      <div class="m-fg m-sales-pur-field">
         <label class="m-fl">Bill No</label>
         <input type="text" id="m-bill-input" class="m-inp" placeholder="Search Bill No..." />
       </div>
-      <div class="m-fg">
+      <div class="m-fg m-sales-pur-field">
         <label class="m-fl">Broker</label>
         <input type="text" id="m-broker-input" class="m-inp" placeholder="Search Broker..." />
       </div>
-      <div class="m-fg">
+      <div class="m-fg m-sales-pur-field">
         <label class="m-fl">Party Account</label>
         <input type="text" id="m-party-input" class="m-inp" placeholder="Search Party..." />
       </div>
-      <div class="m-fg">
+      <div class="m-fg m-sales-pur-field">
         <label class="m-fl">Rice Variety / Item</label>
         <select id="m-variety-select" class="m-inp">
           <option value="">All Varieties</option>
         </select>
       </div>
+
+      <!-- Journal Specific Fields -->
+      <div class="m-fg m-journal-field" style="display:none;">
+        <label class="m-fl">Credit / Jama Account</label>
+        <input type="text" id="m-jama-input" class="m-inp" placeholder="Search Jama Account..." />
+      </div>
+      <div class="m-fg m-journal-field" style="display:none;">
+        <label class="m-fl">Debit / Kharchu Account</label>
+        <input type="text" id="m-kharchu-input" class="m-inp" placeholder="Search Kharchu Account..." />
+      </div>
+
+      <!-- Common Date Fields -->
       <div class="m-fg">
         <label class="m-fl">From Date</label>
         <input type="date" id="m-from-date" class="m-inp" />
@@ -5151,7 +5164,9 @@
         <label class="m-fl">To Date</label>
         <input type="date" id="m-to-date" class="m-inp" />
       </div>
-      <div class="m-fg">
+
+      <!-- Sales & Purchases Payment Filter -->
+      <div class="m-fg m-sales-pur-field">
         <label class="m-fl">Payment Status</label>
         <select id="m-payment-select" class="m-inp">
           <option value="all">All Payment Statuses</option>
@@ -5166,6 +5181,7 @@
       <button class="m-btn-apply" onclick="applyMobileFilters()">Apply Filters</button>
     </div>
   </div>
+
 
 
 
@@ -5401,99 +5417,71 @@
           msgBox.innerText = '✓ ' + res.message;
           document.getElementById('newStaffUsername').value = '';
           document.getElementById('newStaffName').value = '';
-          document.getElementById('newStaffPassword').value = '';
-          loadMillStaffList();
-        } else {
-          msgBox.style.background = 'rgba(239,68,68,0.15)';
-          msgBox.style.color = '#ef4444';
-          msgBox.innerText = res.message || 'Failed to create staff account.';
-        }
-      } catch (err) {
-        msgBox.style.display = 'block';
-        msgBox.style.background = 'rgba(239,68,68,0.15)';
-        msgBox.style.color = '#ef4444';
-        msgBox.innerText = 'Network error.';
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    async function deleteStaffUser(username) {
-      if (!confirm(`Are you sure you want to delete staff account '${username}'?`)) return;
-      try {
-        const resp = await fetch('/api/mill-staff/delete', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ username })
-        });
-        const res = await resp.json();
-        if (resp.ok && res.status === 'ok') {
-          loadMillStaffList();
-        } else {
-          alert(res.message || 'Delete failed');
-        }
-      } catch (err) {
-        alert('Network error deleting staff account');
-      }
-    }
-
-    /* ═══════════════════════════════════════════════════════════ MOBILE FILTER DRAWER & CARDS */
+     /* ═══════════════════════════════════════════════════════════ MOBILE FILTER DRAWER & CARDS */
     function openMobileFilterDrawer() {
       const drawer = document.getElementById('mobileFilterDrawer');
       const backdrop = document.getElementById('mobileDrawerBackdrop');
       const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
+      const isJournal = (activePage === 'page-journal');
 
-      const varSelect = document.getElementById('m-variety-select');
-      if (varSelect) {
-        const currentSelected = varSelect.value;
-        let varietiesList = [];
+      document.querySelectorAll('.m-sales-pur-field').forEach(el => el.style.display = isJournal ? 'none' : 'block');
+      document.querySelectorAll('.m-journal-field').forEach(el => el.style.display = isJournal ? 'block' : 'none');
+
+      if (isJournal) {
+        if (document.getElementById('m-jama-input')) document.getElementById('m-jama-input').value = document.getElementById('jf-dr')?.value || '';
+        if (document.getElementById('m-kharchu-input')) document.getElementById('m-kharchu-input').value = document.getElementById('jf-cr')?.value || '';
+        if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = document.getElementById('jf-from')?.value || '';
+        if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = document.getElementById('jf-to')?.value || '';
+      } else {
+        const varSelect = document.getElementById('m-variety-select');
+        if (varSelect) {
+          const currentSelected = varSelect.value;
+          let varietiesList = [];
+
+          if (activePage === 'page-orders') {
+            const panel = document.getElementById('ms-variety-panel');
+            if (panel) {
+              varietiesList = [...panel.querySelectorAll('input')].map(c => c.value).filter(Boolean);
+            }
+          } else if (activePage === 'page-purchases') {
+            const panel = document.getElementById('pur-ms-variety-panel');
+            if (panel) {
+              varietiesList = [...panel.querySelectorAll('input')].map(c => c.value).filter(Boolean);
+            }
+          }
+
+          if (!varietiesList.length) {
+            const varSet = new Set();
+            const targetOrders = (activePage === 'page-purchases')
+              ? ((typeof allPurchases !== 'undefined' && Array.isArray(allPurchases)) ? allPurchases : (window._purchases || []))
+              : ((typeof allOrders !== 'undefined' && Array.isArray(allOrders)) ? allOrders : (window._orders || []));
+
+            targetOrders.forEach(o => (o.details || []).forEach(d => { if (d.variety) varSet.add(d.variety); }));
+            varietiesList = [...varSet].sort();
+          }
+
+          let optsHtml = `<option value="">All Varieties</option>`;
+          varietiesList.forEach(v => {
+            optsHtml += `<option value="${esc(v)}"${v === currentSelected ? ' selected' : ''}>${esc(v)}</option>`;
+          });
+          varSelect.innerHTML = optsHtml;
+        }
 
         if (activePage === 'page-orders') {
-          const panel = document.getElementById('ms-variety-panel');
-          if (panel) {
-            varietiesList = [...panel.querySelectorAll('input')].map(c => c.value).filter(Boolean);
-          }
+          if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = document.getElementById('f-ioid')?.value || '';
+          if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = document.getElementById('f-broker')?.value || '';
+          if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = document.getElementById('f-party')?.value || '';
+          if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = document.getElementById('f-from')?.value || '';
+          if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = document.getElementById('f-to')?.value || '';
+          if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = window.payFilter || 'all';
         } else if (activePage === 'page-purchases') {
-          const panel = document.getElementById('pur-ms-variety-panel');
-          if (panel) {
-            varietiesList = [...panel.querySelectorAll('input')].map(c => c.value).filter(Boolean);
-          }
+          if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = document.getElementById('pur-f-ioid')?.value || '';
+          if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = document.getElementById('pur-f-broker')?.value || '';
+          if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = document.getElementById('pur-f-party')?.value || '';
+          if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = document.getElementById('pur-f-from')?.value || '';
+          if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = document.getElementById('pur-f-to')?.value || '';
+          if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = window.purPayFilter || 'all';
         }
-
-        // Fallback if webapp panel not rendered yet
-        if (!varietiesList.length) {
-          const varSet = new Set();
-          const targetOrders = (activePage === 'page-purchases')
-            ? ((typeof allPurchases !== 'undefined' && Array.isArray(allPurchases)) ? allPurchases : (window._purchases || []))
-            : ((typeof allOrders !== 'undefined' && Array.isArray(allOrders)) ? allOrders : (window._orders || []));
-
-          targetOrders.forEach(o => (o.details || []).forEach(d => { if (d.variety) varSet.add(d.variety); }));
-          varietiesList = [...varSet].sort();
-        }
-
-        let optsHtml = `<option value="">All Varieties</option>`;
-        varietiesList.forEach(v => {
-          optsHtml += `<option value="${esc(v)}"${v === currentSelected ? ' selected' : ''}>${esc(v)}</option>`;
-        });
-        varSelect.innerHTML = optsHtml;
-      }
-
-
-      // Pre-fill mobile filter fields from active page state
-      if (activePage === 'page-orders') {
-        if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = document.getElementById('f-ioid')?.value || '';
-        if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = document.getElementById('f-broker')?.value || '';
-        if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = document.getElementById('f-party')?.value || '';
-        if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = document.getElementById('f-from')?.value || '';
-        if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = document.getElementById('f-to')?.value || '';
-        if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = window.payFilter || 'all';
-      } else if (activePage === 'page-purchases') {
-        if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = document.getElementById('pur-f-ioid')?.value || '';
-        if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = document.getElementById('pur-f-broker')?.value || '';
-        if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = document.getElementById('pur-f-party')?.value || '';
-        if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = document.getElementById('pur-f-from')?.value || '';
-        if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = document.getElementById('pur-f-to')?.value || '';
-        if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = window.purPayFilter || 'all';
       }
 
       if (drawer) drawer.classList.add('open');
@@ -5508,69 +5496,117 @@
     }
 
     function applyMobileFilters() {
-      const billVal = (document.getElementById('m-bill-input')?.value || '').trim();
-      const brokerVal = (document.getElementById('m-broker-input')?.value || '').trim();
-      const partyVal = (document.getElementById('m-party-input')?.value || '').trim();
-      const selectedVar = document.getElementById('m-variety-select')?.value || '';
+      const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
       const fromDate = document.getElementById('m-from-date')?.value || '';
       const toDate = document.getElementById('m-to-date')?.value || '';
-      const payVal = document.getElementById('m-payment-select')?.value || 'all';
+
+      if (activePage === 'page-journal') {
+        const jamaVal = (document.getElementById('m-jama-input')?.value || '').trim();
+        const kharchuVal = (document.getElementById('m-kharchu-input')?.value || '').trim();
+
+        const dtJama = document.getElementById('jf-dr');
+        if (dtJama) dtJama.value = jamaVal;
+
+        const dtKharchu = document.getElementById('jf-cr');
+        if (dtKharchu) dtKharchu.value = kharchuVal;
+
+        const dtFrom = document.getElementById('jf-from');
+        if (dtFrom) dtFrom.value = fromDate;
+
+        const dtTo = document.getElementById('jf-to');
+        if (dtTo) dtTo.value = toDate;
+
+        if (typeof jApplyF === 'function') jApplyF();
+      } else {
+        const billVal = (document.getElementById('m-bill-input')?.value || '').trim();
+        const brokerVal = (document.getElementById('m-broker-input')?.value || '').trim();
+        const partyVal = (document.getElementById('m-party-input')?.value || '').trim();
+        const selectedVar = document.getElementById('m-variety-select')?.value || '';
+        const payVal = document.getElementById('m-payment-select')?.value || 'all';
+
+        if (activePage === 'page-orders') {
+          const dtBill = document.getElementById('f-ioid');
+          if (dtBill) dtBill.value = billVal;
+
+          const dtBroker = document.getElementById('f-broker');
+          if (dtBroker) dtBroker.value = brokerVal;
+
+          const dtParty = document.getElementById('f-party');
+          if (dtParty) dtParty.value = partyVal;
+
+          const dtFrom = document.getElementById('f-from');
+          if (dtFrom) dtFrom.value = fromDate;
+
+          const dtTo = document.getElementById('f-to');
+          if (dtTo) dtTo.value = toDate;
+
+          if (typeof setPayFilter === 'function') setPayFilter(payVal);
+
+          const panel = document.getElementById('ms-variety-panel');
+          if (panel) {
+            panel.querySelectorAll('input').forEach(chk => {
+              chk.checked = selectedVar ? (chk.value === selectedVar) : false;
+            });
+            if (typeof msChange === 'function') msChange('ms-variety');
+          }
+
+          if (typeof applyF === 'function') applyF();
+        } else if (activePage === 'page-purchases') {
+          const dtBill = document.getElementById('pur-f-ioid');
+          if (dtBill) dtBill.value = billVal;
+
+          const dtBroker = document.getElementById('pur-f-broker');
+          if (dtBroker) dtBroker.value = brokerVal;
+
+          const dtParty = document.getElementById('pur-f-party');
+          if (dtParty) dtParty.value = partyVal;
+
+          const dtFrom = document.getElementById('pur-f-from');
+          if (dtFrom) dtFrom.value = fromDate;
+
+          const dtTo = document.getElementById('pur-f-to');
+          if (dtTo) dtTo.value = toDate;
+
+          if (typeof purSetPayFilter === 'function') purSetPayFilter(payVal);
+
+          const panel = document.getElementById('pur-ms-variety-panel');
+          if (panel) {
+            panel.querySelectorAll('input').forEach(chk => {
+              chk.checked = selectedVar ? (chk.value === selectedVar) : false;
+            });
+            if (typeof msChange === 'function') msChange('pur-ms-variety');
+          }
+
+          if (typeof purApplyF === 'function') purApplyF();
+        }
+      }
+
+      closeMobileFilterDrawer();
+    }
+
+    function resetMobileFilters() {
+      if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = '';
+      if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = '';
+      if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = '';
+      if (document.getElementById('m-jama-input')) document.getElementById('m-jama-input').value = '';
+      if (document.getElementById('m-kharchu-input')) document.getElementById('m-kharchu-input').value = '';
+      if (document.getElementById('m-variety-select')) document.getElementById('m-variety-select').value = '';
+      if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = '';
+      if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = '';
+      if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = 'all';
 
       const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
+      if (activePage === 'page-orders' && typeof resetF === 'function') {
+        resetF();
+      } else if (activePage === 'page-purchases' && typeof purResetF === 'function') {
+        purResetF();
+      } else if (activePage === 'page-journal' && typeof jResetF === 'function') {
+        jResetF();
+      }
 
-      if (activePage === 'page-orders') {
-        const dtBill = document.getElementById('f-ioid');
-        if (dtBill) dtBill.value = billVal;
-
-        const dtBroker = document.getElementById('f-broker');
-        if (dtBroker) dtBroker.value = brokerVal;
-
-        const dtParty = document.getElementById('f-party');
-        if (dtParty) dtParty.value = partyVal;
-
-        const dtFrom = document.getElementById('f-from');
-        if (dtFrom) dtFrom.value = fromDate;
-
-        const dtTo = document.getElementById('f-to');
-        if (dtTo) dtTo.value = toDate;
-
-        if (typeof setPayFilter === 'function') {
-          setPayFilter(payVal);
-        }
-
-        const panel = document.getElementById('ms-variety-panel');
-        if (panel) {
-          panel.querySelectorAll('input').forEach(chk => {
-            chk.checked = selectedVar ? (chk.value === selectedVar) : false;
-          });
-          if (typeof msChange === 'function') msChange('ms-variety');
-        }
-
-        if (typeof applyF === 'function') applyF();
-      } else if (activePage === 'page-purchases') {
-        const dtBill = document.getElementById('pur-f-ioid');
-        if (dtBill) dtBill.value = billVal;
-
-        const dtBroker = document.getElementById('pur-f-broker');
-        if (dtBroker) dtBroker.value = brokerVal;
-
-        const dtParty = document.getElementById('pur-f-party');
-        if (dtParty) dtParty.value = partyVal;
-
-        const dtFrom = document.getElementById('pur-f-from');
-        if (dtFrom) dtFrom.value = fromDate;
-
-        const dtTo = document.getElementById('pur-f-to');
-        if (dtTo) dtTo.value = toDate;
-
-        if (typeof purSetPayFilter === 'function') {
-          purSetPayFilter(payVal);
-        }
-
-        const panel = document.getElementById('pur-ms-variety-panel');
-        if (panel) {
-          panel.querySelectorAll('input').forEach(chk => {
-            chk.checked = selectedVar ? (chk.value === selectedVar) : false;
+      closeMobileFilterDrawer();
+    }
+Var) : false;
           });
           if (typeof msChange === 'function') msChange('pur-ms-variety');
         }
