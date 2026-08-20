@@ -5074,22 +5074,21 @@
     </div>
     <div class="m-drawer-body">
       <div class="m-fg">
-        <label class="m-fl">Search Keyword</label>
-        <input type="text" id="m-search-input" class="m-inp" placeholder="Party name, broker, bill #..." />
+        <label class="m-fl">Bill No</label>
+        <input type="text" id="m-bill-input" class="m-inp" placeholder="Search Bill No..." />
+      </div>
+      <div class="m-fg">
+        <label class="m-fl">Broker</label>
+        <input type="text" id="m-broker-input" class="m-inp" placeholder="Search Broker..." />
+      </div>
+      <div class="m-fg">
+        <label class="m-fl">Party Account</label>
+        <input type="text" id="m-party-input" class="m-inp" placeholder="Search Party..." />
       </div>
       <div class="m-fg">
         <label class="m-fl">Rice Variety / Item</label>
         <select id="m-variety-select" class="m-inp">
           <option value="">All Varieties</option>
-        </select>
-      </div>
-      <div class="m-fg">
-        <label class="m-fl">Payment Status</label>
-        <select id="m-payment-select" class="m-inp">
-          <option value="all">All Payment Statuses</option>
-          <option value="pending">Pending Payments</option>
-          <option value="unpaid">Unpaid Records</option>
-          <option value="paid">Paid Records</option>
         </select>
       </div>
       <div class="m-fg">
@@ -5100,12 +5099,22 @@
         <label class="m-fl">To Date</label>
         <input type="date" id="m-to-date" class="m-inp" />
       </div>
+      <div class="m-fg">
+        <label class="m-fl">Payment Status</label>
+        <select id="m-payment-select" class="m-inp">
+          <option value="all">All Payment Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="unpaid">Unpaid</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
     </div>
     <div class="m-drawer-ftr">
       <button class="m-btn-rst" onclick="resetMobileFilters()">Reset All</button>
       <button class="m-btn-apply" onclick="applyMobileFilters()">Apply Filters</button>
     </div>
   </div>
+
 
 
   <!-- Mobile Detail Modal & Backdrop -->
@@ -5373,21 +5382,52 @@
     function openMobileFilterDrawer() {
       const drawer = document.getElementById('mobileFilterDrawer');
       const backdrop = document.getElementById('mobileDrawerBackdrop');
+      const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
 
       const varSelect = document.getElementById('m-variety-select');
       if (varSelect) {
         const currentSelected = varSelect.value;
         const setOfVars = new Set();
-        (window._orders || window.allOrders || []).concat(window._purchases || window.allPurchases || []).forEach(o => {
-          if (o.variety) setOfVars.add(o.variety);
-          (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
-        });
+
+        if (activePage === 'page-orders') {
+          (window.allOrders || []).forEach(o => {
+            if (o.variety) setOfVars.add(o.variety);
+            (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
+          });
+        } else if (activePage === 'page-purchases') {
+          (window.allPurchases || []).forEach(o => {
+            if (o.variety) setOfVars.add(o.variety);
+            (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
+          });
+        } else {
+          (window.allOrders || []).concat(window.allPurchases || []).forEach(o => {
+            if (o.variety) setOfVars.add(o.variety);
+            (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
+          });
+        }
 
         let optsHtml = `<option value="">All Varieties</option>`;
         [...setOfVars].sort().forEach(v => {
           optsHtml += `<option value="${esc(v)}"${v === currentSelected ? ' selected' : ''}>${esc(v)}</option>`;
         });
         varSelect.innerHTML = optsHtml;
+      }
+
+      // Pre-fill mobile filter fields from active page state
+      if (activePage === 'page-orders') {
+        if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = document.getElementById('f-ioid')?.value || '';
+        if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = document.getElementById('f-broker')?.value || '';
+        if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = document.getElementById('f-party')?.value || '';
+        if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = document.getElementById('f-from')?.value || '';
+        if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = document.getElementById('f-to')?.value || '';
+        if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = window.payFilter || 'all';
+      } else if (activePage === 'page-purchases') {
+        if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = document.getElementById('pur-f-ioid')?.value || '';
+        if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = document.getElementById('pur-f-broker')?.value || '';
+        if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = document.getElementById('pur-f-party')?.value || '';
+        if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = document.getElementById('pur-f-from')?.value || '';
+        if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = document.getElementById('pur-f-to')?.value || '';
+        if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = window.purPayFilter || 'all';
       }
 
       if (drawer) drawer.classList.add('open');
@@ -5402,17 +5442,25 @@
     }
 
     function applyMobileFilters() {
-      const searchVal = (document.getElementById('m-search-input')?.value || '').toLowerCase();
+      const billVal = (document.getElementById('m-bill-input')?.value || '').trim();
+      const brokerVal = (document.getElementById('m-broker-input')?.value || '').trim();
+      const partyVal = (document.getElementById('m-party-input')?.value || '').trim();
+      const selectedVar = document.getElementById('m-variety-select')?.value || '';
       const fromDate = document.getElementById('m-from-date')?.value || '';
       const toDate = document.getElementById('m-to-date')?.value || '';
-      const selectedVar = document.getElementById('m-variety-select')?.value || '';
       const payVal = document.getElementById('m-payment-select')?.value || 'all';
 
       const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
 
       if (activePage === 'page-orders') {
+        const dtBill = document.getElementById('f-ioid');
+        if (dtBill) dtBill.value = billVal;
+
+        const dtBroker = document.getElementById('f-broker');
+        if (dtBroker) dtBroker.value = brokerVal;
+
         const dtParty = document.getElementById('f-party');
-        if (dtParty) dtParty.value = searchVal;
+        if (dtParty) dtParty.value = partyVal;
 
         const dtFrom = document.getElementById('f-from');
         if (dtFrom) dtFrom.value = fromDate;
@@ -5424,20 +5472,24 @@
           setPayFilter(payVal);
         }
 
-        if (selectedVar) {
-          const panel = document.getElementById('ms-variety-panel');
-          if (panel) {
-            panel.querySelectorAll('input').forEach(chk => {
-              chk.checked = (chk.value === selectedVar);
-            });
-            if (typeof msChange === 'function') msChange('ms-variety');
-          }
+        const panel = document.getElementById('ms-variety-panel');
+        if (panel) {
+          panel.querySelectorAll('input').forEach(chk => {
+            chk.checked = selectedVar ? (chk.value === selectedVar) : false;
+          });
+          if (typeof msChange === 'function') msChange('ms-variety');
         }
 
         if (typeof applyF === 'function') applyF();
       } else if (activePage === 'page-purchases') {
+        const dtBill = document.getElementById('pur-f-ioid');
+        if (dtBill) dtBill.value = billVal;
+
+        const dtBroker = document.getElementById('pur-f-broker');
+        if (dtBroker) dtBroker.value = brokerVal;
+
         const dtParty = document.getElementById('pur-f-party');
-        if (dtParty) dtParty.value = searchVal;
+        if (dtParty) dtParty.value = partyVal;
 
         const dtFrom = document.getElementById('pur-f-from');
         if (dtFrom) dtFrom.value = fromDate;
@@ -5449,14 +5501,12 @@
           purSetPayFilter(payVal);
         }
 
-        if (selectedVar) {
-          const panel = document.getElementById('pur-ms-variety-panel');
-          if (panel) {
-            panel.querySelectorAll('input').forEach(chk => {
-              chk.checked = (chk.value === selectedVar);
-            });
-            if (typeof msChange === 'function') msChange('pur-ms-variety');
-          }
+        const panel = document.getElementById('pur-ms-variety-panel');
+        if (panel) {
+          panel.querySelectorAll('input').forEach(chk => {
+            chk.checked = selectedVar ? (chk.value === selectedVar) : false;
+          });
+          if (typeof msChange === 'function') msChange('pur-ms-variety');
         }
 
         if (typeof purApplyF === 'function') purApplyF();
@@ -5466,10 +5516,12 @@
     }
 
     function resetMobileFilters() {
-      if (document.getElementById('m-search-input')) document.getElementById('m-search-input').value = '';
+      if (document.getElementById('m-bill-input')) document.getElementById('m-bill-input').value = '';
+      if (document.getElementById('m-broker-input')) document.getElementById('m-broker-input').value = '';
+      if (document.getElementById('m-party-input')) document.getElementById('m-party-input').value = '';
+      if (document.getElementById('m-variety-select')) document.getElementById('m-variety-select').value = '';
       if (document.getElementById('m-from-date')) document.getElementById('m-from-date').value = '';
       if (document.getElementById('m-to-date')) document.getElementById('m-to-date').value = '';
-      if (document.getElementById('m-variety-select')) document.getElementById('m-variety-select').value = '';
       if (document.getElementById('m-payment-select')) document.getElementById('m-payment-select').value = 'all';
 
       const activePage = document.querySelector('.main .page.active')?.id || 'page-orders';
@@ -5481,6 +5533,7 @@
 
       closeMobileFilterDrawer();
     }
+
 
 
     let _mobileCardsStore = {};
