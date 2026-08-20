@@ -5446,35 +5446,38 @@
       const varSelect = document.getElementById('m-variety-select');
       if (varSelect) {
         const currentSelected = varSelect.value;
-        const setOfVars = new Set();
-
-        const salesList = (typeof allOrders !== 'undefined' && Array.isArray(allOrders)) ? allOrders : (window._orders || []);
-        const purList = (typeof allPurchases !== 'undefined' && Array.isArray(allPurchases)) ? allPurchases : (window._purchases || []);
+        let varietiesList = [];
 
         if (activePage === 'page-orders') {
-          salesList.forEach(o => {
-            if (o.variety) setOfVars.add(o.variety);
-            (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
-          });
+          const panel = document.getElementById('ms-variety-panel');
+          if (panel) {
+            varietiesList = [...panel.querySelectorAll('input')].map(c => c.value).filter(Boolean);
+          }
         } else if (activePage === 'page-purchases') {
-          purList.forEach(o => {
-            if (o.variety) setOfVars.add(o.variety);
-            (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
-          });
-        } else {
-          salesList.concat(purList).forEach(o => {
-            if (o.variety) setOfVars.add(o.variety);
-            (o.details || []).forEach(d => { if (d.variety) setOfVars.add(d.variety); });
-          });
+          const panel = document.getElementById('pur-ms-variety-panel');
+          if (panel) {
+            varietiesList = [...panel.querySelectorAll('input')].map(c => c.value).filter(Boolean);
+          }
         }
 
+        // Fallback if webapp panel not rendered yet
+        if (!varietiesList.length) {
+          const varSet = new Set();
+          const targetOrders = (activePage === 'page-purchases')
+            ? ((typeof allPurchases !== 'undefined' && Array.isArray(allPurchases)) ? allPurchases : (window._purchases || []))
+            : ((typeof allOrders !== 'undefined' && Array.isArray(allOrders)) ? allOrders : (window._orders || []));
+
+          targetOrders.forEach(o => (o.details || []).forEach(d => { if (d.variety) varSet.add(d.variety); }));
+          varietiesList = [...varSet].sort();
+        }
 
         let optsHtml = `<option value="">All Varieties</option>`;
-        [...setOfVars].sort().forEach(v => {
+        varietiesList.forEach(v => {
           optsHtml += `<option value="${esc(v)}"${v === currentSelected ? ' selected' : ''}>${esc(v)}</option>`;
         });
         varSelect.innerHTML = optsHtml;
       }
+
 
       // Pre-fill mobile filter fields from active page state
       if (activePage === 'page-orders') {
