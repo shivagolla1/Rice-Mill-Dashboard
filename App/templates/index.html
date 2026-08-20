@@ -5414,9 +5414,64 @@
         if (resp.ok && res.status === 'ok') {
           msgBox.style.background = 'rgba(34,197,94,0.15)';
           msgBox.style.color = '#22c55e';
-          msgBox.innerText = '✓ ' + res.message;
+          msgBox.innerText = '✓ ' + (res.message || 'Staff account created successfully.');
           document.getElementById('newStaffUsername').value = '';
           document.getElementById('newStaffName').value = '';
+          document.getElementById('newStaffPassword').value = '';
+          loadMillStaffList();
+        } else {
+          msgBox.style.background = 'rgba(239,68,68,0.15)';
+          msgBox.style.color = '#ef4444';
+          msgBox.innerText = res.message || 'Failed to add staff account.';
+        }
+      } catch (err) {
+        msgBox.style.background = 'rgba(239,68,68,0.15)';
+        msgBox.style.color = '#ef4444';
+        msgBox.innerText = 'Server error. Please try again.';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function deleteStaffUser(username) {
+      if (!confirm(`Are you sure you want to delete staff account '${username}'?`)) return;
+      try {
+        const resp = await fetch('/api/mill-staff/delete', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ username })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.status === 'ok') {
+          alert(res.message || 'Staff deleted.');
+          loadMillStaffList();
+        } else {
+          alert(res.message || 'Failed to delete staff.');
+        }
+      } catch (err) {
+        alert('Server error deleting staff.');
+      }
+    }
+
+    async function promptResetStaffPassword(username) {
+      const newPass = prompt(`Enter new password for '${username}':`);
+      if (!newPass) return;
+      try {
+        const resp = await fetch('/api/mill-staff/reset-password', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ username, new_password: newPass })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.status === 'ok') {
+          alert(res.message || 'Password reset successfully.');
+        } else {
+          alert(res.message || 'Failed to reset password.');
+        }
+      } catch (err) {
+        alert('Server error resetting password.');
+      }
+    }
      /* ═══════════════════════════════════════════════════════════ MOBILE FILTER DRAWER & CARDS */
     function openMobileFilterDrawer() {
       const drawer = document.getElementById('mobileFilterDrawer');
