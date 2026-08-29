@@ -5786,6 +5786,39 @@
 
       if (title) title.innerText = `Bill #${bill}`;
 
+      let itemDetailsHtml = '';
+      if (item.details && item.details.length > 1) {
+        itemDetailsHtml = `
+          <div style="margin-top:6px;">
+            <div style="font-size:11px; font-weight:700; color:var(--tx3); text-transform:uppercase; margin-bottom:6px;">
+              📦 Itemized Line Items (${item.details.length} Lines)
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${item.details.map((d, di) => {
+                const dAmt = parseFloat(String(d.amount || 0).replace(/[^\d.]/g, '')) || 0;
+                const dRate = parseFloat(String(d.rate || 0).replace(/[^\d.]/g, '')) || 0;
+                return `
+                  <div style="background:var(--sur2); border:1px solid var(--bdr); border-radius:6px; padding:8px 10px; font-size:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                      <span style="font-weight:700; color:var(--accent-lt);">#${di + 1} ${esc(d.variety || '—')}</span>
+                      <strong style="color:var(--tx); font-family:var(--mono);">₹${dAmt.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; color:var(--tx2); font-size:11.5px;">
+                      <span>${fmtN(d.bags)} Bags (${fmt(d.qtl)} ${esc(d.unit || 'Qtl')})</span>
+                      <span>@ ₹${dRate.toLocaleString('en-IN')}/${esc(d.unit || 'Qtl')}</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 10px; background:var(--bg2); border-radius:6px; border:1px solid var(--bdr2); margin-top:6px; font-size:12.5px; font-weight:700;">
+              <span>Total (${item.details.length} Lines)</span>
+              <span style="color:var(--accent); font-family:var(--mono);">₹${numAmt.toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+        `;
+      }
+
       let paymentsHtml = '';
       if (item.payments && item.payments.length > 0) {
         paymentsHtml = `
@@ -5821,6 +5854,7 @@
             </div>
           </div>
 
+          ${itemDetailsHtml ? itemDetailsHtml : `
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
             <div style="background:var(--sur2); padding:8px 10px; border-radius:6px; border:1px solid var(--bdr);">
               <div style="font-size:10px; color:var(--tx3); text-transform:uppercase; font-weight:600;">Variety / Item</div>
@@ -5842,6 +5876,7 @@
               <div style="font-weight:700; color:var(--tx); font-size:13.5px; font-family:var(--mono);">₹${numAmt.toLocaleString('en-IN')}</div>
             </div>
           </div>
+          `}
 
           ${paymentsHtml}
         </div>
@@ -5850,6 +5885,7 @@
       if (modal) modal.classList.add('open');
       if (backdrop) backdrop.classList.add('show');
     }
+
 
     function closeMobileDetailModal() {
       const backdrop = document.getElementById('mobileDetailBackdrop');
