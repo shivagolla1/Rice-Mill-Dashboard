@@ -3332,7 +3332,8 @@
       let totalQtl = 0, totalAmt = 0;
       orders.forEach(o => {
         totalQtl += parseFloat(o.qtl) || 0;
-        totalAmt += parseFloat(o.amount) || 0;
+        const bal = o.balance ?? (parseFloat(o.amount) - (parseFloat(o.paid) || 0));
+        totalAmt += parseFloat(bal) || 0;
       });
       document.getElementById(`total-qtl-${tab}`).textContent = fmt(totalQtl);
       document.getElementById(`total-amt-${tab}`).textContent = `${R_SYM}${fmt(totalAmt, 0)}`;
