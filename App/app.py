@@ -1433,6 +1433,172 @@ def serve_manifest():
     return send_from_directory(static_dir, 'manifest.json', mimetype='application/json')
 
 
+@app.route('/sw.js')
+def serve_sw():
+    """Serve service worker from /sw.js root so it has full scope."""
+    static_dir = os.path.join(EXE_DIR, 'static')
+    resp = send_from_directory(static_dir, 'sw.js', mimetype='application/javascript')
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
+
+
+# ── WEB PUSH / PWA NOTIFICATIONS ─────────────────────────────────────────────
+
+def _load_vapid_keys():
+    """
+    Load permanent VAPID keys from config.txt (stored as DER base64 one-liners).
+    Keys are generated ONCE and never regenerated to keep iPhone subscriptions alive
+    across all server restarts.
+    """
+    priv_b64 = CFG.get('VAPID_PRIVATE_KEY', '').strip()
+    pub_b64  = CFG.get('VAPID_PUBLIC_KEY',  '').strip()
+    email    = CFG.get('VAPID_EMAIL', 'mailto:shivagolla1@gmail.com').strip()
+    return priv_b64, pub_b64, email
+
+
+def _get_push_subs_path(tenant_id):
+    """Path to the push subscription store for a tenant."""
+    tenant_dir = tenants.get_tenant_dir(tenant_id)
+    return os.path.join(tenant_dir, 'push_subscriptions.json')
+
+
+def _load_push_subs(tenant_id):
+    p = _get_push_subs_path(tenant_id)
+    if not os.path.exists(p):
+        return {}
+    try:
+        with open(p, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_push_subs(tenant_id, subs_dict):
+    p = _get_push_subs_path(tenant_id)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, 'w', encoding='utf-8') as f:
+        json.dump(subs_dict, f, indent=2)
+
+
+def send_push_notifications(tenant_id, title, body, url='/'):
+    """
+    Send a Web Push notification to all subscribed mobile devices for a tenant.
+    Runs in a background thread — never blocks the upload response.
+    Stale/expired subscriptions are removed automatically.
+    """
+    priv_b64, pub_b64, vapid_email = _load_vapid_keys()
+    if not priv_b64 or not pub_b64:
+        print("Push: VAPID keys not configured — skipping push.")
+        return
+
+    try:
+        from pywebpush import webpush, WebPushException
+        import base64, binascii
+    except ImportError:
+        print("Push: pywebpush not installed — skipping push.")
+        return
+
+    subs = _load_push_subs(tenant_id)
+    if not subs:
+        return
+
+    payload = json.dumps({'title': title, 'body': body, 'url': url})
+
+    # Reconstruct PEM from stored DER base64 one-liner
+    try:
+        der_bytes = base64.b64decode(priv_b64 + '==')
+        import base64 as _b64
+        pem_b64 = _b64.b64encode(der_bytes).decode()
+        # Wrap in PEM header/footer (60-char lines)
+        lines = [pem_b64[i:i+64] for i in range(0, len(pem_b64), 64)]
+        private_pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(lines) + "\n-----END PRIVATE KEY-----"
+    except Exception as e:
+        print(f"Push: Failed to reconstruct private key PEM: {e}")
+        return
+
+    stale_keys = []
+    for endpoint_key, sub_info in subs.items():
+        try:
+            webpush(
+                subscription_info=sub_info,
+                data=payload,
+                vapid_private_key=private_pem,
+                vapid_claims={"sub": vapid_email},
+                content_encoding="aes128gcm",
+                ttl=86400
+            )
+        except WebPushException as ex:
+            resp = ex.response
+            if resp is not None and resp.status_code in (404, 410):
+                stale_keys.append(endpoint_key)
+                print(f"Push: Removed stale subscription ({resp.status_code}).")
+            else:
+                print(f"Push: WebPushException for {endpoint_key}: {ex}")
+        except Exception as ex:
+            print(f"Push: Error sending to {endpoint_key}: {ex}")
+
+    if stale_keys:
+        for k in stale_keys:
+            subs.pop(k, None)
+        _save_push_subs(tenant_id, subs)
+
+
+@app.route('/api/push-vapid-key')
+def api_push_vapid_key():
+    """Return the VAPID public key so the browser can subscribe."""
+    _, pub_b64, _ = _load_vapid_keys()
+    if not pub_b64:
+        return jsonify({'error': 'Push not configured'}), 503
+    return jsonify({'publicKey': pub_b64})
+
+
+@app.route('/api/push-subscribe', methods=['POST'])
+def api_push_subscribe():
+    """Save or update a device's push subscription for this tenant."""
+    tenant_id = None
+    if 'user' in session and isinstance(session['user'], dict):
+        tenant_id = session.get('tenant_id') or session['user'].get('tenant_id')
+    if not tenant_id:
+        tenant_id = 'client_default'
+
+    data = request.get_json(silent=True) or {}
+    sub = data.get('subscription')
+    if not sub or not sub.get('endpoint'):
+        return jsonify({'status': 'error', 'message': 'Invalid subscription'}), 400
+
+    endpoint = sub['endpoint']
+    # Use a short hash of endpoint as dict key (endpoints can be very long)
+    import hashlib
+    key = hashlib.sha256(endpoint.encode()).hexdigest()[:16]
+
+    subs = _load_push_subs(tenant_id)
+    subs[key] = sub
+    _save_push_subs(tenant_id, subs)
+    return jsonify({'status': 'ok', 'message': 'Subscribed successfully'})
+
+
+@app.route('/api/push-unsubscribe', methods=['POST'])
+def api_push_unsubscribe():
+    """Remove a device's push subscription."""
+    tenant_id = None
+    if 'user' in session and isinstance(session['user'], dict):
+        tenant_id = session.get('tenant_id') or session['user'].get('tenant_id')
+    if not tenant_id:
+        tenant_id = 'client_default'
+
+    data = request.get_json(silent=True) or {}
+    sub = data.get('subscription')
+    if not sub or not sub.get('endpoint'):
+        return jsonify({'status': 'ok'})
+
+    import hashlib
+    key = hashlib.sha256(sub['endpoint'].encode()).hexdigest()[:16]
+    subs = _load_push_subs(tenant_id)
+    subs.pop(key, None)
+    _save_push_subs(tenant_id, subs)
+    return jsonify({'status': 'ok', 'message': 'Unsubscribed'})
+
 
 @app.route('/api/shutdown', methods=['POST'])
 def api_shutdown():
@@ -1817,6 +1983,16 @@ def api_upload_database():
 
     # Trigger AuditEngine snapshot creation asynchronously in a background thread
     threading.Thread(target=_async_process_upload_audit, args=(tenant_id,), daemon=True).start()
+
+    # Send push notification to all subscribed mobile devices for this tenant
+    company_name = tenant.get('company_name', 'Rice Mill')
+    push_title = f"📂 {company_name}"
+    push_body  = "New database file uploaded — dashboard is now up to date!"
+    threading.Thread(
+        target=send_push_notifications,
+        args=(tenant_id, push_title, push_body, '/'),
+        daemon=True
+    ).start()
 
     return jsonify({
         'status': 'ok',

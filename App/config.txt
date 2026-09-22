@@ -34,3 +34,12 @@ MDB_FILE=D:\ \  2025-2026.mdb
 # Options: True or False (default: False)
 ENABLE_UPDATES = False
 
+
+# ── PUSH NOTIFICATIONS (Web Push / PWA) ──────────────────────────
+# IMPORTANT: These VAPID keys are permanent. Do NOT regenerate them.
+# Regenerating keys will invalidate all existing iPhone subscriptions.
+# Generated once on 2026-09-22. Keep these values forever.
+
+VAPID_PRIVATE_KEY=MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgws0gqYEL1OqoIPAkdh9xZOHb96NXtoj8727kh8NZFxChRANCAATo2YrYYan01VlZmX+WdweKhDtVGEPKlgePn3YDallHkPaD+0sRIi5qxNNkYh5eRc22J77tGjSz79GNbc4yP98C
+VAPID_PUBLIC_KEY=BOjZithhqfTVWVmZf5Z3B4qEO1UYQ8qWB4-fdgNqWUeQ9oP7SxEiLmrE02RiHl5FzbYnvu0aNLPv0Y1tzjI_3wI
+VAPID_EMAIL=mailto:shivagolla1@gmail.com

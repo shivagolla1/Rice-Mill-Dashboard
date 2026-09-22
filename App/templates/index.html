@@ -5896,6 +5896,77 @@
     }
 
 
+    /* ═══════════════════════════════════ PWA PUSH NOTIFICATIONS ══ */
+
+    (function initPushNotifications() {
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (!isMobile) return;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+      const PUSH_BANNER_KEY = 'push_banner_dismissed_v1';
+
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function (reg) {
+        reg.pushManager.getSubscription().then(function (existingSub) {
+          if (existingSub) {
+            saveSubscriptionToServer(existingSub);
+          } else if (Notification.permission === 'granted') {
+            subscribeToPush(reg);
+          } else if (Notification.permission === 'default' && !localStorage.getItem(PUSH_BANNER_KEY)) {
+            showPushBanner(reg);
+          }
+        });
+      }).catch(function (err) { console.warn('SW registration failed:', err); });
+
+      function showPushBanner(reg) {
+        const banner = document.createElement('div');
+        banner.id = 'push-banner';
+        banner.style.cssText = [
+          'position:fixed','top:env(safe-area-inset-top, 0)','left:0','right:0',
+          'z-index:9999','background:#c96442','color:#fff',
+          'display:flex','align-items:center','justify-content:space-between',
+          'padding:10px 16px','font-size:13px','font-family:var(--font,sans-serif)',
+          'gap:10px','box-shadow:0 2px 8px rgba(0,0,0,.25)'
+        ].join(';');
+        banner.innerHTML = '<span style="flex:1;line-height:1.4">🔔 Tap to get notified when a new file is uploaded</span>'
+          + '<button id="push-banner-enable" style="background:#fff;color:#c96442;border:none;border-radius:6px;padding:6px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">Enable</button>'
+          + '<button id="push-banner-dismiss" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer;padding:0 4px;line-height:1">×</button>';
+        document.body.prepend(banner);
+        document.getElementById('push-banner-enable').addEventListener('click', function () {
+          banner.remove(); localStorage.setItem(PUSH_BANNER_KEY, '1'); subscribeToPush(reg);
+        });
+        document.getElementById('push-banner-dismiss').addEventListener('click', function () {
+          banner.remove(); localStorage.setItem(PUSH_BANNER_KEY, '1');
+        });
+      }
+
+      function subscribeToPush(reg) {
+        fetch('/api/push-vapid-key')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.publicKey) return;
+            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(data.publicKey) });
+          })
+          .then(function (sub) { if (sub) saveSubscriptionToServer(sub); })
+          .catch(function (err) { console.warn('Push subscribe failed:', err); });
+      }
+
+      function saveSubscriptionToServer(sub) {
+        fetch('/api/push-subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub.toJSON() })
+        }).catch(function (err) { console.warn('Push save failed:', err); });
+      }
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        const out = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
+        return out;
+      }
+    })();
 
   </script>
 
