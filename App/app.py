@@ -1487,34 +1487,41 @@ def send_push_notifications(tenant_id, title, body, url='/'):
     Runs in a background thread — never blocks the upload response.
     Stale/expired subscriptions are removed automatically.
     """
+    import base64 as _base64
+
     priv_b64, pub_b64, vapid_email = _load_vapid_keys()
     if not priv_b64 or not pub_b64:
-        print("Push: VAPID keys not configured — skipping push.")
+        app.logger.warning("Push: VAPID keys not configured in config.txt — skipping push.")
         return
 
     try:
         from pywebpush import webpush, WebPushException
-        import base64, binascii
     except ImportError:
-        print("Push: pywebpush not installed — skipping push.")
+        app.logger.error("Push: pywebpush not installed — run: pip install pywebpush")
         return
 
     subs = _load_push_subs(tenant_id)
     if not subs:
+        app.logger.info(f"Push: No subscriptions for tenant '{tenant_id}' — skipping.")
         return
 
+    app.logger.info(f"Push: Sending notification to {len(subs)} subscription(s) for tenant '{tenant_id}'.")
     payload = json.dumps({'title': title, 'body': body, 'url': url})
 
-    # Reconstruct PEM from stored DER base64 one-liner
+    # Reconstruct PEM directly from stored base64 body — no decode/re-encode needed.
+    # The stored VAPID_PRIVATE_KEY is the PKCS#8 DER body (base64), just wrap in headers.
     try:
-        der_bytes = base64.b64decode(priv_b64 + '==')
-        import base64 as _b64
-        pem_b64 = _b64.b64encode(der_bytes).decode()
-        # Wrap in PEM header/footer (60-char lines)
-        lines = [pem_b64[i:i+64] for i in range(0, len(pem_b64), 64)]
+        key_body = priv_b64.strip()
+        # Add padding if needed (base64 must be divisible by 4)
+        padding = '=' * (-len(key_body) % 4)
+        key_body += padding
+        # Validate the base64 is decodable
+        _base64.b64decode(key_body)
+        # Wrap in standard 64-char-per-line PEM block
+        lines = [key_body[i:i+64] for i in range(0, len(key_body), 64)]
         private_pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(lines) + "\n-----END PRIVATE KEY-----"
     except Exception as e:
-        print(f"Push: Failed to reconstruct private key PEM: {e}")
+        app.logger.error(f"Push: Failed to build private key PEM: {e}")
         return
 
     stale_keys = []
@@ -1528,15 +1535,17 @@ def send_push_notifications(tenant_id, title, body, url='/'):
                 content_encoding="aes128gcm",
                 ttl=86400
             )
+            app.logger.info(f"Push: Sent OK to subscription {endpoint_key}.")
         except WebPushException as ex:
             resp = ex.response
             if resp is not None and resp.status_code in (404, 410):
                 stale_keys.append(endpoint_key)
-                print(f"Push: Removed stale subscription ({resp.status_code}).")
+                app.logger.warning(f"Push: Stale subscription removed (HTTP {resp.status_code}): {endpoint_key}")
             else:
-                print(f"Push: WebPushException for {endpoint_key}: {ex}")
+                status = resp.status_code if resp is not None else 'no-response'
+                app.logger.error(f"Push: WebPushException HTTP {status} for {endpoint_key}: {ex}")
         except Exception as ex:
-            print(f"Push: Error sending to {endpoint_key}: {ex}")
+            app.logger.error(f"Push: Unexpected error sending to {endpoint_key}: {ex}", exc_info=True)
 
     if stale_keys:
         for k in stale_keys:
@@ -1598,6 +1607,49 @@ def api_push_unsubscribe():
     subs.pop(key, None)
     _save_push_subs(tenant_id, subs)
     return jsonify({'status': 'ok', 'message': 'Unsubscribed'})
+
+
+@app.route('/api/push-status')
+def api_push_status():
+    """Debug: check VAPID config and subscription count for this tenant."""
+    tenant_id = None
+    if 'user' in session and isinstance(session['user'], dict):
+        tenant_id = session.get('tenant_id') or session['user'].get('tenant_id')
+    if not tenant_id:
+        tenant_id = 'client_default'
+
+    priv_b64, pub_b64, vapid_email = _load_vapid_keys()
+    subs = _load_push_subs(tenant_id)
+
+    return jsonify({
+        'tenant_id': tenant_id,
+        'vapid_configured': bool(priv_b64 and pub_b64),
+        'vapid_public_key_preview': pub_b64[:20] + '...' if pub_b64 else None,
+        'vapid_email': vapid_email,
+        'subscription_count': len(subs),
+        'subscription_keys': list(subs.keys())
+    })
+
+
+@app.route('/api/push-test-send', methods=['POST'])
+def api_push_test_send():
+    """Debug: fire a test push notification to all subscriptions for this tenant."""
+    tenant_id = None
+    if 'user' in session and isinstance(session['user'], dict):
+        tenant_id = session.get('tenant_id') or session['user'].get('tenant_id')
+    if not tenant_id:
+        tenant_id = 'client_default'
+
+    subs = _load_push_subs(tenant_id)
+    if not subs:
+        return jsonify({'status': 'error', 'message': f'No subscriptions found for tenant {tenant_id}'}), 404
+
+    threading.Thread(
+        target=send_push_notifications,
+        args=(tenant_id, '🔔 Test Notification', 'Push is working! File uploads will trigger this.', '/'),
+        daemon=True
+    ).start()
+    return jsonify({'status': 'ok', 'message': f'Test push dispatched to {len(subs)} subscription(s)', 'tenant_id': tenant_id})
 
 
 @app.route('/api/shutdown', methods=['POST'])
