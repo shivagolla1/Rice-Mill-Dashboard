@@ -1631,7 +1631,7 @@ def api_push_status():
     })
 
 
-@app.route('/api/push-test-send', methods=['POST'])
+@app.route('/api/push-test-send', methods=['GET', 'POST'])
 def api_push_test_send():
     """Debug: fire a test push notification to all subscriptions for this tenant."""
     tenant_id = None
