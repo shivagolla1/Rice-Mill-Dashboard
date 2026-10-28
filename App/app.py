@@ -2348,6 +2348,15 @@ def api_sync_database():
         except Exception as audit_err:
             print("AuditEngine process_upload error:", audit_err)
 
+        # Send push notification to all subscribed mobile devices for this tenant
+        push_title = f"📂 {company_name}"
+        push_body  = "New database file uploaded — dashboard is now up to date!"
+        threading.Thread(
+            target=send_push_notifications,
+            args=(tenant_id, push_title, push_body, '/'),
+            daemon=True
+        ).start()
+
         return jsonify({
             'status': 'ok',
             'message': f'Database synced successfully for {company_name}',
