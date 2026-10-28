@@ -1485,72 +1485,79 @@ def send_push_notifications(tenant_id, title, body, url='/'):
     """
     Send a Web Push notification to all subscribed mobile devices for a tenant.
     Runs in a background thread — never blocks the upload response.
-    Stale/expired subscriptions are removed automatically.
+    Uses standard logging (NOT app.logger) because this runs outside Flask app context.
     """
     import base64 as _base64
-
-    priv_b64, pub_b64, vapid_email = _load_vapid_keys()
-    if not priv_b64 or not pub_b64:
-        app.logger.warning("Push: VAPID keys not configured in config.txt — skipping push.")
-        return
+    import logging as _logging
+    import traceback as _tb
+    _log = _logging.getLogger('push')
 
     try:
-        from pywebpush import webpush, WebPushException
-    except ImportError:
-        app.logger.error("Push: pywebpush not installed — run: pip install pywebpush")
-        return
+        priv_b64, pub_b64, vapid_email = _load_vapid_keys()
+        if not priv_b64 or not pub_b64:
+            _log.warning("Push: VAPID keys not configured in config.txt — skipping.")
+            return
 
-    subs = _load_push_subs(tenant_id)
-    if not subs:
-        app.logger.info(f"Push: No subscriptions for tenant '{tenant_id}' — skipping.")
-        return
-
-    app.logger.info(f"Push: Sending notification to {len(subs)} subscription(s) for tenant '{tenant_id}'.")
-    payload = json.dumps({'title': title, 'body': body, 'url': url})
-
-    # Reconstruct PEM directly from stored base64 body — no decode/re-encode needed.
-    # The stored VAPID_PRIVATE_KEY is the PKCS#8 DER body (base64), just wrap in headers.
-    try:
-        key_body = priv_b64.strip()
-        # Add padding if needed (base64 must be divisible by 4)
-        padding = '=' * (-len(key_body) % 4)
-        key_body += padding
-        # Validate the base64 is decodable
-        _base64.b64decode(key_body)
-        # Wrap in standard 64-char-per-line PEM block
-        lines = [key_body[i:i+64] for i in range(0, len(key_body), 64)]
-        private_pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(lines) + "\n-----END PRIVATE KEY-----"
-    except Exception as e:
-        app.logger.error(f"Push: Failed to build private key PEM: {e}")
-        return
-
-    stale_keys = []
-    for endpoint_key, sub_info in subs.items():
         try:
-            webpush(
-                subscription_info=sub_info,
-                data=payload,
-                vapid_private_key=private_pem,
-                vapid_claims={"sub": vapid_email},
-                content_encoding="aes128gcm",
-                ttl=86400
-            )
-            app.logger.info(f"Push: Sent OK to subscription {endpoint_key}.")
-        except WebPushException as ex:
-            resp = ex.response
-            if resp is not None and resp.status_code in (404, 410):
-                stale_keys.append(endpoint_key)
-                app.logger.warning(f"Push: Stale subscription removed (HTTP {resp.status_code}): {endpoint_key}")
-            else:
-                status = resp.status_code if resp is not None else 'no-response'
-                app.logger.error(f"Push: WebPushException HTTP {status} for {endpoint_key}: {ex}")
-        except Exception as ex:
-            app.logger.error(f"Push: Unexpected error sending to {endpoint_key}: {ex}", exc_info=True)
+            from pywebpush import webpush, WebPushException
+        except ImportError:
+            _log.error("Push: pywebpush not installed — add pywebpush>=2.0.0 to requirements.txt")
+            return
 
-    if stale_keys:
-        for k in stale_keys:
-            subs.pop(k, None)
-        _save_push_subs(tenant_id, subs)
+        subs = _load_push_subs(tenant_id)
+        if not subs:
+            _log.info(f"Push: No subscriptions for tenant '{tenant_id}' — skipping.")
+            return
+
+        _log.info(f"Push: Sending to {len(subs)} subscription(s) for tenant '{tenant_id}'.")
+        payload = json.dumps({'title': title, 'body': body, 'url': url})
+
+        # Reconstruct PEM from stored base64 body — just wrap with headers, no decode/re-encode.
+        try:
+            key_body = priv_b64.strip() + '=' * (-len(priv_b64.strip()) % 4)
+            _base64.b64decode(key_body)   # validate
+            lines = [key_body[i:i+64] for i in range(0, len(key_body), 64)]
+            private_pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(lines) + "\n-----END PRIVATE KEY-----"
+        except Exception as e:
+            _log.error(f"Push: Failed to build PEM: {e}")
+            return
+
+        stale_keys = []
+        for endpoint_key, sub_info in subs.items():
+            try:
+                webpush(
+                    subscription_info=sub_info,
+                    data=payload,
+                    vapid_private_key=private_pem,
+                    vapid_claims={"sub": vapid_email},
+                    content_encoding="aes128gcm",
+                    ttl=86400
+                )
+                _log.info(f"Push: Sent OK to {endpoint_key}.")
+            except WebPushException as ex:
+                resp = ex.response
+                if resp is not None and resp.status_code in (404, 410):
+                    stale_keys.append(endpoint_key)
+                    _log.warning(f"Push: Stale subscription removed (HTTP {resp.status_code}).")
+                else:
+                    status = resp.status_code if resp is not None else 'no-response'
+                    resp_body = ''
+                    try:
+                        resp_body = resp.text[:300] if resp is not None else ''
+                    except Exception:
+                        pass
+                    _log.error(f"Push: WebPushException HTTP {status}: {ex} | body: {resp_body}")
+            except Exception as ex:
+                _log.error(f"Push: Error sending to {endpoint_key}: {ex}\n{_tb.format_exc()}")
+
+        if stale_keys:
+            for k in stale_keys:
+                subs.pop(k, None)
+            _save_push_subs(tenant_id, subs)
+
+    except Exception as top_ex:
+        import logging as _l2
+        _l2.getLogger('push').error(f"Push: Top-level crash: {top_ex}\n{_tb.format_exc()}")
 
 
 @app.route('/api/push-vapid-key')
