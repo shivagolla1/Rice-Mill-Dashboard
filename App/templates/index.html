@@ -3327,13 +3327,23 @@
       }
     }
 
-    function updateTotals(tab, orders) {
+    function updateTotals(tab, orders, activeVarieties) {
       if (!showTotalsState[tab]) return;
       let totalQtl = 0, totalAmt = 0;
+      const filterVars = (activeVarieties && activeVarieties.length > 0) ? activeVarieties : null;
       orders.forEach(o => {
-        totalQtl += parseFloat(o.qtl) || 0;
-        const bal = o.balance ?? (parseFloat(o.amount) - (parseFloat(o.paid) || 0));
-        totalAmt += parseFloat(bal) || 0;
+        if (filterVars) {
+          // Variety filter active: sum only the matching detail rows, not the whole order
+          const matchDets = (o.details || []).filter(d => filterVars.includes(d.variety));
+          matchDets.forEach(d => {
+            totalQtl += parseFloat(d.qtl) || 0;
+            totalAmt += parseFloat(d.amount) || 0;
+          });
+        } else {
+          // No variety filter: sum gross order amount
+          totalQtl += parseFloat(o.qtl) || 0;
+          totalAmt += parseFloat(o.amount) || 0;
+        }
       });
       document.getElementById(`total-qtl-${tab}`).textContent = fmt(totalQtl);
       document.getElementById(`total-amt-${tab}`).textContent = `${R_SYM}${fmt(totalAmt, 0)}`;
@@ -3567,7 +3577,7 @@
       });
       tbody.innerHTML = html;
       window._orders = orders;
-      updateTotals('sales', orders);
+      updateTotals('sales', orders, getMsVals('ms-variety'));
       if (typeof renderMobileCardList === 'function') {
         renderMobileCardList(orders, 'sales-mobile-card-list');
       }
@@ -3883,7 +3893,7 @@
       });
       tbody.innerHTML = html;
       window._purchases = orders;
-      updateTotals('pur', orders);
+      updateTotals('pur', orders, getMsVals('pur-ms-variety'));
       if (typeof renderMobileCardList === 'function') {
         renderMobileCardList(orders, 'purchases-mobile-card-list');
       }
