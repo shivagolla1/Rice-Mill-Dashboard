@@ -4961,7 +4961,8 @@
               headers: {
                 'X-Chunk-Index': chunkIdx,
                 'X-Total-Chunks': totalChunks,
-                'X-Upload-ID': uploadId
+                'X-Upload-ID': uploadId,
+                'X-Filename': file.name
               },
               body: formData
             });

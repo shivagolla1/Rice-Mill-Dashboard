@@ -319,7 +319,7 @@ def mdb_read(db, tname):
 # ── PER-TENANT MDB ACCESS + CACHE ──────────────────────────────────────────────
 import threading
 
-_tenant_caches      = {}   # tenant_id → { "mtime": float, "tables": { tname: (cols, types, rows) } }
+_tenant_caches      = {}   # (tenant_id, mdb_path) → { "mtime": float, "tables": { tname: (cols, types, rows) } }
 _tenant_cache_lock = threading.Lock()
 
 def get_current_tenant_id():
@@ -332,10 +332,70 @@ def get_current_tenant_id():
         return session['tenant_id']
     return 'client_default'
 
-def get_current_tenant_mdb_path(tenant_id=None):
-    """Return absolute path to the active tenant's Database.mdb file."""
+def _get_year_mdb_files(tenant_id=None):
+    """Return sorted list of all existing db_YYYY-YYYY.mdb paths for a tenant."""
     if not tenant_id:
         tenant_id = get_current_tenant_id()
+    tenant_dir = tenants.get_tenant_dir(tenant_id)
+    pattern = re.compile(r'^db_\d{4}-\d{4}\.mdb$', re.IGNORECASE)
+    try:
+        files = [
+            os.path.join(tenant_dir, f)
+            for f in sorted(os.listdir(tenant_dir))
+            if pattern.match(f) and os.path.exists(os.path.join(tenant_dir, f))
+        ]
+    except Exception:
+        files = []
+    return files
+
+
+def _get_tenant_mdb_paths(tenant_id=None):
+    """Return list of MDB paths to query for a tenant.
+    If any db_YYYY-YYYY.mdb files exist, query only those (avoids duplicates with Database.mdb).
+    Otherwise fall back to Database.mdb.
+    """
+    if not tenant_id:
+        tenant_id = get_current_tenant_id()
+    year_files = _get_year_mdb_files(tenant_id)
+    if year_files:
+        return year_files
+    fallback = get_current_tenant_mdb_path(tenant_id)
+    return [fallback] if fallback and os.path.exists(fallback) else []
+
+
+def _resolve_upload_mdb_filename(filename):
+    """Map uploaded filename containing YYYY-YYYY to db_YYYY-YYYY.mdb, else Database.mdb."""
+    year_match = re.search(r'(\d{4}-\d{4})', (filename or '').strip())
+    if year_match:
+        return f"db_{year_match.group(1)}.mdb"
+    return 'Database.mdb'
+
+
+def _invalidate_tenant_cache(tenant_id, mdb_path=None):
+    """Invalidate cached tables for one MDB file or all MDB files of a tenant."""
+    with _tenant_cache_lock:
+        if mdb_path is not None:
+            cache_key = (tenant_id, mdb_path)
+            if cache_key in _tenant_caches:
+                _tenant_caches[cache_key]["mtime"] = None
+                _tenant_caches[cache_key]["tables"].clear()
+        else:
+            for key, entry in _tenant_caches.items():
+                if isinstance(key, tuple) and key[0] == tenant_id:
+                    entry["mtime"] = None
+                    entry["tables"].clear()
+
+
+def get_current_tenant_mdb_path(tenant_id=None):
+    """Return absolute path to the active tenant's MDB file.
+    If year-named files exist, returns the first one.
+    Falls back to Database.mdb for backward compatibility.
+    """
+    if not tenant_id:
+        tenant_id = get_current_tenant_id()
+    year_files = _get_year_mdb_files(tenant_id)
+    if year_files:
+        return year_files[0]  # Return first (oldest) for single-file callers
     tenant_dir = tenants.get_tenant_dir(tenant_id)
     tenant_mdb = os.path.join(tenant_dir, 'Database.mdb')
     if os.path.exists(tenant_mdb):
@@ -350,12 +410,12 @@ def get_current_tenant_mdb_path(tenant_id=None):
             return MDB_PATH
     return tenant_mdb
 
-def get_cached_table(tname, tenant_id=None):
-    """Return (cols, types, rows) from per-tenant in-memory cache."""
+def get_cached_table(tname, tenant_id=None, mdb_path=None):
+    """Return (cols, types, rows) from per-file in-memory cache."""
     if not tenant_id:
         tenant_id = get_current_tenant_id()
-
-    mdb_path = get_current_tenant_mdb_path(tenant_id)
+    if mdb_path is None:
+        mdb_path = get_current_tenant_mdb_path(tenant_id)
     if not mdb_path or not os.path.exists(mdb_path):
         return [], [], []
 
@@ -364,10 +424,11 @@ def get_cached_table(tname, tenant_id=None):
     except Exception:
         return [], [], []
 
+    cache_key = (tenant_id, mdb_path)
     with _tenant_cache_lock:
-        if tenant_id not in _tenant_caches:
-            _tenant_caches[tenant_id] = {"mtime": None, "tables": {}}
-        t_cache = _tenant_caches[tenant_id]
+        if cache_key not in _tenant_caches:
+            _tenant_caches[cache_key] = {"mtime": None, "tables": {}}
+        t_cache = _tenant_caches[cache_key]
 
         if t_cache["mtime"] == mtime and tname in t_cache["tables"]:
             return t_cache["tables"][tname]
@@ -409,16 +470,35 @@ def read_table(tname):
 def get_transactions(mode_filter, tenant_id=None):
     if not tenant_id:
         tenant_id = get_current_tenant_id()
-    mdb_path = get_current_tenant_mdb_path(tenant_id)
+
+    mdb_paths = _get_tenant_mdb_paths(tenant_id)
+    if not mdb_paths:
+        return []
+
+    all_orders = []
+    for mdb_path in mdb_paths:
+        orders = _get_transactions_from_mdb(mode_filter, tenant_id, mdb_path)
+        if isinstance(orders, list):
+            all_orders.extend(orders)
+
+    # Sort merged results chronologically descending (loaded_date is DD.MM.YY)
+    all_orders.sort(
+        key=lambda o: to_date(o.get('loaded_raw') or o.get('loaded_date')) or dobj.min,
+        reverse=True
+    )
+    return all_orders
+
+
+def _get_transactions_from_mdb(mode_filter, tenant_id, mdb_path):
     if not mdb_path or not os.path.exists(mdb_path):
         return []
 
     try:
         # Use cached tables — parsed once on startup, instant on subsequent calls
-        io_cols,  _, io_rows   = get_cached_table('IO', tenant_id=tenant_id)
-        det_cols, _, det_rows  = get_cached_table('IO Details', tenant_id=tenant_id)
-        con_cols, _, con_rows  = get_cached_table('Confirmation', tenant_id=tenant_id)
-        oth_cols, _, oth_rows  = get_cached_table('IO Other Details', tenant_id=tenant_id)
+        io_cols,  _, io_rows   = get_cached_table('IO', tenant_id=tenant_id, mdb_path=mdb_path)
+        det_cols, _, det_rows  = get_cached_table('IO Details', tenant_id=tenant_id, mdb_path=mdb_path)
+        con_cols, _, con_rows  = get_cached_table('Confirmation', tenant_id=tenant_id, mdb_path=mdb_path)
+        oth_cols, _, oth_rows  = get_cached_table('IO Other Details', tenant_id=tenant_id, mdb_path=mdb_path)
 
 
         if not io_cols:
@@ -505,7 +585,7 @@ def get_transactions(mode_filter, tenant_id=None):
             }
 
         # Get payments from Journal table
-        jnl_cols, _, jnl_rows = get_cached_table('Journal')
+        jnl_cols, _, jnl_rows = get_cached_table('Journal', tenant_id=tenant_id, mdb_path=mdb_path)
         j_ioid_i   = col_i(jnl_cols, ['io id','ioid'])
         j_date_i   = col_i(jnl_cols, ['transaction date','date','paydate'])
         j_dr_i     = col_i(jnl_cols, ['dr account','dr','debit','party'])
@@ -533,7 +613,7 @@ def get_transactions(mode_filter, tenant_id=None):
                     })
 
         # Get adjustments from IO DC table
-        dc_cols, _, dc_rows = get_cached_table('IO DC')
+        dc_cols, _, dc_rows = get_cached_table('IO DC', tenant_id=tenant_id, mdb_path=mdb_path)
         dc_ioid_i = col_i(dc_cols, ['io id','ioid'])
         dc_cred_i = col_i(dc_cols, ['credit'])
         dc_deb_i  = col_i(dc_cols, ['debit'])
@@ -654,46 +734,48 @@ def api_purchases():
 
 @app.route('/api/journal')
 def api_journal_all():
-    """Return every Journal row for the Journal page."""
-    mdb_path = get_current_tenant_mdb_path()
-    if not os.path.exists(mdb_path):
+    """Return every Journal row for the Journal page across all active MDB files."""
+    tenant_id = get_current_tenant_id()
+    mdb_paths = _get_tenant_mdb_paths(tenant_id)
+    if not mdb_paths:
         return jsonify({'error':'file_not_found'})
     try:
-        jnl_cols, _, jnl_rows = get_cached_table('Journal')
-        if not jnl_cols:
-            return jsonify([])
-
-        j_id_i     = col_i(jnl_cols, ['journal id'])
-        j_date_i   = col_i(jnl_cols, ['transaction date','date'])
-        j_amt_i    = col_i(jnl_cols, ['amount'])
-        j_ioid_i   = col_i(jnl_cols, ['io id','ioid'])
-        j_dr_i     = col_i(jnl_cols, ['dr account'])
-        j_cr_i     = col_i(jnl_cols, ['cr account'])
-        j_det_i    = col_i(jnl_cols, ['details'])
-        j_ctrl_i   = col_i(jnl_cols, ['ctrl id'])
-        j_type_i   = col_i(jnl_cols, ['type'])
-        j_repno_i  = col_i(jnl_cols, ['report no'])
-        j_vno_i    = col_i(jnl_cols, ['voucher no'])
-
         out = []
-        for r in jnl_rows:
-            raw_date = ss(r[j_date_i]) if j_date_i is not None else ''
-            out.append({
-                'journal_id':  r[j_id_i]  if j_id_i  is not None else '',
-                'raw_date':    raw_date,
-                'date':        parse_date(raw_date),
-                'amount':      unscale(r[j_amt_i]) if j_amt_i is not None else 0,
-                'io_id':       r[j_ioid_i] if j_ioid_i is not None else '',
-                'dr_account':  ss(r[j_dr_i])  if j_dr_i  is not None else '',
-                'cr_account':  ss(r[j_cr_i])  if j_cr_i  is not None else '',
-                'details':     ss(r[j_det_i]) if j_det_i is not None else '',
-                'ctrl_id':     ss(r[j_ctrl_i]) if j_ctrl_i is not None else '',
-                'type':        ss(r[j_type_i]) if j_type_i is not None else '',
-                'report_no':   ss(r[j_repno_i]) if j_repno_i is not None else '',
-                'voucher_no':  ss(r[j_vno_i])  if j_vno_i  is not None else '',
-            })
+        for mdb_path in mdb_paths:
+            jnl_cols, _, jnl_rows = get_cached_table('Journal', tenant_id=tenant_id, mdb_path=mdb_path)
+            if not jnl_cols:
+                continue
 
-        out.sort(key=lambda x: x['raw_date'] or '', reverse=True)
+            j_id_i     = col_i(jnl_cols, ['journal id'])
+            j_date_i   = col_i(jnl_cols, ['transaction date','date'])
+            j_amt_i    = col_i(jnl_cols, ['amount'])
+            j_ioid_i   = col_i(jnl_cols, ['io id','ioid'])
+            j_dr_i     = col_i(jnl_cols, ['dr account'])
+            j_cr_i     = col_i(jnl_cols, ['cr account'])
+            j_det_i    = col_i(jnl_cols, ['details'])
+            j_ctrl_i   = col_i(jnl_cols, ['ctrl id'])
+            j_type_i   = col_i(jnl_cols, ['type'])
+            j_repno_i  = col_i(jnl_cols, ['report no'])
+            j_vno_i    = col_i(jnl_cols, ['voucher no'])
+
+            for r in jnl_rows:
+                raw_date = ss(r[j_date_i]) if j_date_i is not None else ''
+                out.append({
+                    'journal_id':  r[j_id_i]  if j_id_i  is not None else '',
+                    'raw_date':    raw_date,
+                    'date':        parse_date(raw_date),
+                    'amount':      unscale(r[j_amt_i]) if j_amt_i is not None else 0,
+                    'io_id':       r[j_ioid_i] if j_ioid_i is not None else '',
+                    'dr_account':  ss(r[j_dr_i])  if j_dr_i  is not None else '',
+                    'cr_account':  ss(r[j_cr_i])  if j_cr_i  is not None else '',
+                    'details':     ss(r[j_det_i]) if j_det_i is not None else '',
+                    'ctrl_id':     ss(r[j_ctrl_i]) if j_ctrl_i is not None else '',
+                    'type':        ss(r[j_type_i]) if j_type_i is not None else '',
+                    'report_no':   ss(r[j_repno_i]) if j_repno_i is not None else '',
+                    'voucher_no':  ss(r[j_vno_i])  if j_vno_i  is not None else '',
+                })
+
+        out.sort(key=lambda x: to_date(x['raw_date'] or x['date']) or dobj.min, reverse=True)
         return jsonify(out)
 
     except ImportError:
@@ -707,8 +789,9 @@ def api_reports_summary():
     """Simplified P&L report and interactive Broker/Party analyzer."""
     if not SHOW_BI_REPORTS:
         return jsonify({'error': 'BI Reports are disabled.'}), 403
-    mdb_path = get_current_tenant_mdb_path()
-    if not os.path.exists(mdb_path):
+    tenant_id = get_current_tenant_id()
+    mdb_paths = _get_tenant_mdb_paths(tenant_id)
+    if not mdb_paths:
         return jsonify({'error': 'file_not_found'})
 
     try:
@@ -718,8 +801,8 @@ def api_reports_summary():
         from_date = to_date(from_date_str) if from_date_str else None
         to_date_val = to_date(to_date_str) if to_date_str else None
 
-        sales = get_transactions('sales')
-        purchases = get_transactions('purchases')
+        sales = get_transactions('sales', tenant_id=tenant_id)
+        purchases = get_transactions('purchases', tenant_id=tenant_id)
 
         if isinstance(sales, dict) and 'error' in sales:
             return jsonify(sales)
@@ -840,37 +923,40 @@ def api_reports_summary():
                     purch_others['qtl'] += qtl
                     purch_others['amount'] += amt
 
-        # Process expenses from Journal table
-        j_cols, _, j_rows = get_cached_table('Journal')
-        j_dr_i = col_i(j_cols, ['dr account'])
-        j_cr_i = col_i(j_cols, ['cr account'])
-        j_amt_i = col_i(j_cols, ['amount'])
-        j_date_i = col_i(j_cols, ['transaction date', 'date'])
-
+        # Process expenses from Journal table across all active MDB files
         paddy_freight = 0.0
         direct_labor = 0.0
         construction = 0.0
         new_godown = 0.0
 
-        for r in j_rows:
-            dt = ss(r[j_date_i]) if j_date_i is not None else ''
-            tx_date = to_date(dt)
-            if tx_date:
-                if from_date and tx_date < from_date: continue
-                if to_date_val and tx_date > to_date_val: continue
+        for mdb_path in mdb_paths:
+            j_cols, _, j_rows = get_cached_table('Journal', tenant_id=tenant_id, mdb_path=mdb_path)
+            if not j_cols:
+                continue
+            j_dr_i = col_i(j_cols, ['dr account'])
+            j_cr_i = col_i(j_cols, ['cr account'])
+            j_amt_i = col_i(j_cols, ['amount'])
+            j_date_i = col_i(j_cols, ['transaction date', 'date'])
 
-            dr = ss(r[j_dr_i]).strip()
-            cr = ss(r[j_cr_i]).strip()
-            amt = unscale(r[j_amt_i])
+            for r in j_rows:
+                dt = ss(r[j_date_i]) if j_date_i is not None else ''
+                tx_date = to_date(dt)
+                if tx_date:
+                    if from_date and tx_date < from_date: continue
+                    if to_date_val and tx_date > to_date_val: continue
 
-            if cr == 'Paddy Frieght' or dr == 'Paddy Lorry Advance':
-                paddy_freight += amt
-            elif cr in ('Labour Charges', 'Hamali'):
-                direct_labor += amt
-            elif cr == 'Construction':
-                construction += amt
-            elif cr == 'New Godown':
-                new_godown += amt
+                dr = ss(r[j_dr_i]).strip()
+                cr = ss(r[j_cr_i]).strip()
+                amt = unscale(r[j_amt_i])
+
+                if cr == 'Paddy Frieght' or dr == 'Paddy Lorry Advance':
+                    paddy_freight += amt
+                elif cr in ('Labour Charges', 'Hamali'):
+                    direct_labor += amt
+                elif cr == 'Construction':
+                    construction += amt
+                elif cr == 'New Godown':
+                    new_godown += amt
 
         # Post-process variety stats to include average rate and round values
         def finalize_variety_map(m):
@@ -950,29 +1036,33 @@ def api_reports_summary():
 @app.route('/api/journal/<io_id>')
 def api_journal(io_id):
     """All Journal entries for one IO ID with days-to-pay calculation."""
-    mdb_path = get_current_tenant_mdb_path()
-    if not os.path.exists(mdb_path):
+    tenant_id = get_current_tenant_id()
+    mdb_paths = _get_tenant_mdb_paths(tenant_id)
+    if not mdb_paths:
         return jsonify({'error':'file_not_found'})
     try:
-        jnl_cols, _, jnl_rows = get_cached_table('Journal')
-        io_cols,  _, io_rows  = get_cached_table('IO')
+        # Locate the MDB file containing this io_id (search newest first if multiple files exist)
+        target_mdb = mdb_paths[0]
+        loaded_raw = ''
+        for candidate in reversed(mdb_paths):
+            io_cols, _, io_rows = get_cached_table('IO', tenant_id=tenant_id, mdb_path=candidate)
+            io_id_i = col_i(io_cols, ['io id','ioid','id'])
+            date_i  = col_i(io_cols, ['transaction date','date'])
+            for r in io_rows:
+                if io_id_i is not None and ss(r[io_id_i]) == io_id:
+                    loaded_raw = ss(r[date_i]) if date_i is not None else ''
+                    target_mdb = candidate
+                    break
+            if target_mdb == candidate and loaded_raw != '':
+                break
 
+        jnl_cols, _, jnl_rows = get_cached_table('Journal', tenant_id=tenant_id, mdb_path=target_mdb)
 
         j_ioid_i   = col_i(jnl_cols, ['io id','ioid'])
         j_date_i   = col_i(jnl_cols, ['transaction date','date','paydate'])
         j_dr_i     = col_i(jnl_cols, ['dr account','dr','debit','party'])
         j_cr_i     = col_i(jnl_cols, ['cr account','cr','credit'])
         j_amount_i = col_i(jnl_cols, ['amount'])
-
-        io_id_i = col_i(io_cols, ['io id','ioid','id'])
-        date_i  = col_i(io_cols, ['transaction date','date'])
-
-        # Get loaded date from IO
-        loaded_raw = ''
-        for r in io_rows:
-            if io_id_i is not None and ss(r[io_id_i]) == io_id:
-                loaded_raw = ss(r[date_i]) if date_i is not None else ''
-                break
 
         # Get journal entries
         matched = [r for r in jnl_rows
@@ -996,10 +1086,10 @@ def api_journal(io_id):
                 'days_to_pay': dtp,
             })
 
-        entries.sort(key=lambda x: x['pay_date'] or '')
+        entries.sort(key=lambda x: to_date(x['pay_raw'] or x['pay_date']) or dobj.min)
 
         # Get adjustments from IO DC
-        dc_cols, _, dc_rows = get_cached_table('IO DC')
+        dc_cols, _, dc_rows = get_cached_table('IO DC', tenant_id=tenant_id, mdb_path=target_mdb)
         dc_ioid_i = col_i(dc_cols, ['io id','ioid'])
         dc_cred_i = col_i(dc_cols, ['credit'])
         dc_deb_i  = col_i(dc_cols, ['debit'])
@@ -1041,74 +1131,78 @@ ALLOWED_PREFIXES = ('paddy', 'raw rice')
 
 @app.route('/api/stocks/trial-balance')
 def api_stocks_trial_balance():
-    """Schedule Trial Balance grouped by Variety → Type+Mode."""
+    """Schedule Trial Balance grouped by Variety → Type+Mode across all active MDB files."""
     if not SHOW_STOCKS:
         return jsonify({'error': 'Stocks page is disabled.'}), 403
-    mdb_path = get_current_tenant_mdb_path()
-    if not os.path.exists(mdb_path):
+    tenant_id = get_current_tenant_id()
+    mdb_paths = _get_tenant_mdb_paths(tenant_id)
+    if not mdb_paths:
         return jsonify({'error': 'file_not_found'})
 
     try:
-        io_cols,  _, io_rows  = get_cached_table('IO')
-        det_cols, _, det_rows = get_cached_table('IO Details')
-
-        # IO index by IO ID → {type, mode, date}
-        io_id_i   = col_i(io_cols, ['io id'])
-        io_type_i = col_i(io_cols, ['type'])
-        io_mode_i = col_i(io_cols, ['mode'])
-        io_date_i = col_i(io_cols, ['transaction date', 'date'])
-
-        io_map = {}
-        for r in io_rows:
-            iid = r[io_id_i] if io_id_i is not None else None
-            if iid is None: continue
-            io_map[iid] = {
-                'type': ss(r[io_type_i]) if io_type_i is not None else '',
-                'mode': ss(r[io_mode_i]) if io_mode_i is not None else '',
-                'date': ss(r[io_date_i]) if io_date_i is not None else '',
-            }
-
-        # IO Details columns
-        d_ioid_i = col_i(det_cols, ['io id'])
-        d_var_i  = col_i(det_cols, ['variety'])
-        d_bags_i = col_i(det_cols, ['bags'])
-        d_qtl_i  = col_i(det_cols, ['quintals'])
-        d_amt_i  = col_i(det_cols, ['amount'])
-
         # Accumulate: variety → (type, mode) → {bags, qtls, jama, kharchu, min_date}
         from collections import defaultdict
         groups = defaultdict(lambda: defaultdict(lambda: {
             'bags': 0.0, 'qtls': 0.0, 'jama': 0.0, 'kharchu': 0.0, 'min_date': ''
         }))
 
-        for r in det_rows:
-            variety = ss(r[d_var_i]) if d_var_i is not None else ''
-            # Allowlist: only keep Paddy and Raw Rice
-            if not variety or not any(variety.lower().startswith(p) for p in ALLOWED_PREFIXES):
-                continue
-            iid  = r[d_ioid_i] if d_ioid_i is not None else None
-            io   = io_map.get(iid, {'type': '', 'mode': '', 'date': ''})
-            typ  = io['type']
-            mode = io['mode']
-            # Include "Direct" entries (type="Direct", mode="") — skip only truly blank rows
-            if not typ and not mode:
+        for mdb_path in mdb_paths:
+            io_cols,  _, io_rows  = get_cached_table('IO', tenant_id=tenant_id, mdb_path=mdb_path)
+            det_cols, _, det_rows = get_cached_table('IO Details', tenant_id=tenant_id, mdb_path=mdb_path)
+            if not io_cols or not det_cols:
                 continue
 
-            bags = float(r[d_bags_i] or 0) if d_bags_i is not None else 0.0
-            qtls = float(r[d_qtl_i]  or 0) if d_qtl_i  is not None else 0.0
-            amt  = unscale(r[d_amt_i])      if d_amt_i  is not None else 0.0
+            # IO index by IO ID → {type, mode, date} (scoped per MDB file to prevent ID collisions)
+            io_id_i   = col_i(io_cols, ['io id'])
+            io_type_i = col_i(io_cols, ['type'])
+            io_mode_i = col_i(io_cols, ['mode'])
+            io_date_i = col_i(io_cols, ['transaction date', 'date'])
 
-            key = (typ, mode)
-            grp = groups[variety][key]
-            grp['bags']    += bags
-            grp['qtls']    += qtls
-            grp['min_date'] = io['date'] if (not grp['min_date'] or io['date'] < grp['min_date']) else grp['min_date']
+            io_map = {}
+            for r in io_rows:
+                iid = r[io_id_i] if io_id_i is not None else None
+                if iid is None: continue
+                io_map[iid] = {
+                    'type': ss(r[io_type_i]) if io_type_i is not None else '',
+                    'mode': ss(r[io_mode_i]) if io_mode_i is not None else '',
+                    'date': ss(r[io_date_i]) if io_date_i is not None else '',
+                }
 
-            # Sales → Jama; everything else (Purchases, Sales Returns, Direct) → Kharchu
-            if mode == 'Sales':
-                grp['jama']    += amt
-            else:
-                grp['kharchu'] += amt
+            # IO Details columns
+            d_ioid_i = col_i(det_cols, ['io id'])
+            d_var_i  = col_i(det_cols, ['variety'])
+            d_bags_i = col_i(det_cols, ['bags'])
+            d_qtl_i  = col_i(det_cols, ['quintals'])
+            d_amt_i  = col_i(det_cols, ['amount'])
+
+            for r in det_rows:
+                variety = ss(r[d_var_i]) if d_var_i is not None else ''
+                # Allowlist: only keep Paddy and Raw Rice
+                if not variety or not any(variety.lower().startswith(p) for p in ALLOWED_PREFIXES):
+                    continue
+                iid  = r[d_ioid_i] if d_ioid_i is not None else None
+                io   = io_map.get(iid, {'type': '', 'mode': '', 'date': ''})
+                typ  = io['type']
+                mode = io['mode']
+                # Include "Direct" entries (type="Direct", mode="") — skip only truly blank rows
+                if not typ and not mode:
+                    continue
+
+                bags = float(r[d_bags_i] or 0) if d_bags_i is not None else 0.0
+                qtls = float(r[d_qtl_i]  or 0) if d_qtl_i  is not None else 0.0
+                amt  = unscale(r[d_amt_i])      if d_amt_i  is not None else 0.0
+
+                key = (typ, mode)
+                grp = groups[variety][key]
+                grp['bags']    += bags
+                grp['qtls']    += qtls
+                grp['min_date'] = io['date'] if (not grp['min_date'] or io['date'] < grp['min_date']) else grp['min_date']
+
+                # Sales → Jama; everything else (Purchases, Sales Returns, Direct) → Kharchu
+                if mode == 'Sales':
+                    grp['jama']    += amt
+                else:
+                    grp['kharchu'] += amt
 
         # Serialize into ordered list
         result = []
@@ -1142,11 +1236,13 @@ def api_stocks_trial_balance():
 
 @app.route('/api/database-status')
 def api_database_status():
-    mdb_path = get_current_tenant_mdb_path()
-    exists = os.path.exists(mdb_path) if mdb_path else False
+    tenant_id = get_current_tenant_id()
+    mdb_paths = _get_tenant_mdb_paths(tenant_id)
+    exists = len(mdb_paths) > 0
     return jsonify({
-        'path': mdb_path or '',
-        'filename': os.path.basename(mdb_path) if (mdb_path and exists) else '',
+        'path': ', '.join(mdb_paths) if exists else '',
+        'filename': ', '.join(os.path.basename(p) for p in mdb_paths) if exists else '',
+        'files': [os.path.basename(p) for p in mdb_paths],
         'exists': exists,
         'cache_ready': True
     })
@@ -1293,10 +1389,7 @@ def api_select_database():
             MDB_PATH = selected_path
             
             tenant_id = get_current_tenant_id()
-            with _tenant_cache_lock:
-                if tenant_id in _tenant_caches:
-                    _tenant_caches[tenant_id]["mtime"] = None
-                    _tenant_caches[tenant_id]["tables"].clear()
+            _invalidate_tenant_cache(tenant_id)
 
             
             return jsonify({
@@ -2021,8 +2114,16 @@ def api_upload_database():
     except Exception:
         mdb_bytes = decrypted_bytes
 
+    # Detect fiscal year from uploaded filename (e.g. "SGRI 2025-2026.mdb" -> "db_2025-2026.mdb")
+    uploaded_filename = (
+        request.headers.get('X-Filename', '') or
+        (request.files['file'].filename if 'file' in request.files else '') or
+        ''
+    ).strip()
+    db_filename = _resolve_upload_mdb_filename(uploaded_filename)
+
     tenant_dir = tenants.get_tenant_dir(tenant_id)
-    target_mdb = os.path.join(tenant_dir, 'Database.mdb')
+    target_mdb = os.path.join(tenant_dir, db_filename)
 
     with open(target_mdb, 'wb') as out_f:
         out_f.write(mdb_bytes)
@@ -2036,9 +2137,8 @@ def api_upload_database():
     if tenant_id == 'client_default':
         MDB_PATH = target_mdb
 
-    # Wipe all in-memory table caches across all keys
-    with _tenant_cache_lock:
-        _tenant_caches.clear()
+    # Invalidate only this file's cache entry
+    _invalidate_tenant_cache(tenant_id, target_mdb)
 
     # Trigger AuditEngine snapshot creation asynchronously in a background thread
     threading.Thread(target=_async_process_upload_audit, args=(tenant_id,), daemon=True).start()
@@ -2070,18 +2170,19 @@ def api_delete_database():
         
     tenant_id = session['user'].get('tenant_id', 'client_default')
     tenant_dir = tenants.get_tenant_dir(tenant_id)
-    target_mdb = os.path.join(tenant_dir, 'Database.mdb')
+    files_to_remove = set(_get_year_mdb_files(tenant_id))
+    default_mdb = os.path.join(tenant_dir, 'Database.mdb')
+    if os.path.exists(default_mdb):
+        files_to_remove.add(default_mdb)
 
-    if os.path.exists(target_mdb):
-        try:
-            os.remove(target_mdb)
-        except Exception as e:
-            return jsonify({'status': 'error', 'message': f'Failed to delete File: {str(e)}'}), 500
+    for target_mdb in files_to_remove:
+        if os.path.exists(target_mdb):
+            try:
+                os.remove(target_mdb)
+            except Exception as e:
+                return jsonify({'status': 'error', 'message': f'Failed to delete File: {str(e)}'}), 500
 
-    with _tenant_cache_lock:
-        if tenant_id in _tenant_caches:
-            _tenant_caches[tenant_id]["mtime"] = None
-            _tenant_caches[tenant_id]["tables"].clear()
+    _invalidate_tenant_cache(tenant_id)
 
     return jsonify({
         'status': 'ok',
@@ -2333,8 +2434,16 @@ def api_sync_database():
         tenant_id = tenant.get('tenant_id', 'client_default') if tenant else 'client_default'
         company_name = tenant.get('company_name', 'Rice Mill') if tenant else 'Rice Mill'
         
+        # Detect fiscal year from uploaded filename (e.g. "SGRI 2025-2026.mdb" -> "db_2025-2026.mdb")
+        sync_filename = (
+            request.headers.get('X-Filename', '') or
+            (json_data.get('filename', '') if 'json_data' in locals() else '') or
+            ''
+        ).strip()
+        db_filename_s = _resolve_upload_mdb_filename(sync_filename)
+
         tenant_dir = tenants.get_tenant_dir(tenant_id)
-        target_mdb = os.path.join(tenant_dir, 'Database.mdb')
+        target_mdb = os.path.join(tenant_dir, db_filename_s)
 
         with open(target_mdb, 'wb') as f:
             f.write(mdb_bytes)
@@ -2342,14 +2451,11 @@ def api_sync_database():
         if tenant_id == 'client_default':
             MDB_PATH = target_mdb
 
-        with _tenant_cache_lock:
-            if tenant_id in _tenant_caches:
-                _tenant_caches[tenant_id]["mtime"] = None
-                _tenant_caches[tenant_id]["tables"].clear()
+        _invalidate_tenant_cache(tenant_id, target_mdb)
 
         # Trigger AuditEngine snapshot diffing
         try:
-            tx_data = get_transactions('all')
+            tx_data = get_transactions('all', tenant_id=tenant_id)
             if isinstance(tx_data, list):
                 audit_engine.AuditEngine.process_upload(tenant_id, tx_data)
         except Exception as audit_err:

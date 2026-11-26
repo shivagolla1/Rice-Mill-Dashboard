@@ -67,6 +67,7 @@ try {
         $WinHttp.SetRequestHeader("Content-Type", "application/json")
         if ($LicenseKey) { $WinHttp.SetRequestHeader("X-License-Key", $LicenseKey) }
         if ($CompanyCode) { $WinHttp.SetRequestHeader("X-Company-Code", $CompanyCode) }
+        if ($FileName) { $WinHttp.SetRequestHeader("X-Filename", $FileName) }
 
         $WinHttp.Send($JsonPayload)
         $ResponseStr = $WinHttp.ResponseText
@@ -86,6 +87,7 @@ try {
         $Request.ContentLength = $JsonBytes.Length
         if ($LicenseKey) { $Request.Headers.Add("X-License-Key", $LicenseKey) }
         if ($CompanyCode) { $Request.Headers.Add("X-Company-Code", $CompanyCode) }
+        if ($FileName) { $Request.Headers.Add("X-Filename", $FileName) }
         $Request.Timeout = 90000
         $Request.KeepAlive = $false
 

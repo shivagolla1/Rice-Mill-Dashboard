@@ -505,7 +505,7 @@
         while (attempts < 3 && !success) {
           attempts++;
           try {
-            const resp = await sendUploadChunk(chunkBlob, chunkIdx, totalChunks, uploadId, (loaded, total) => {
+            const resp = await sendUploadChunk(chunkBlob, chunkIdx, totalChunks, uploadId, file.name, (loaded, total) => {
               const currentProgress = Math.min(99, Math.round(((chunkIdx * chunkSize + loaded) / totalBytes) * 100));
               progressBar.style.width = currentProgress + '%';
               progressPercent.innerText = currentProgress + '%';
@@ -541,7 +541,7 @@
       }
     }
 
-    function sendUploadChunk(blob, chunkIdx, totalChunks, uploadId, onProgress) {
+    function sendUploadChunk(blob, chunkIdx, totalChunks, uploadId, filename, onProgress) {
       return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', blob, 'database.part');
@@ -555,6 +555,7 @@
         xhr.setRequestHeader('X-Chunk-Index', chunkIdx);
         xhr.setRequestHeader('X-Total-Chunks', totalChunks);
         xhr.setRequestHeader('X-Upload-ID', uploadId);
+        xhr.setRequestHeader('X-Filename', filename);
 
         if (xhr.upload && onProgress) {
           xhr.upload.onprogress = function (e) {
